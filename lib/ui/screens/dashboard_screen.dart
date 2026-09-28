@@ -7,12 +7,15 @@ import '../../blocs/dashboard/dashboard_event.dart';
 import '../../blocs/dashboard/dashboard_state.dart';
 import '../../blocs/scanner/scanner_bloc.dart';
 import '../../blocs/scanner/scanner_event.dart';
+import '../../blocs/tasks/task_bloc.dart';
+import '../../blocs/tasks/task_state.dart';
 import '../../repositories/document_repository.dart';
 import '../widgets/document_list_tile.dart';
 import '../widgets/folder_list_tile.dart';
 import '../widgets/neu_widgets.dart';
 import '../../core/folio_theme.dart';
 import 'scanner_screen.dart';
+import 'task_manager_screen.dart';
 import 'document_detail_screen.dart';
 import 'documents_by_folder_screen.dart';
 
@@ -46,6 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: theme.bg,
+      bottomNavigationBar: const _TasksBar(),
       body: BlocBuilder<DashboardBloc, DashboardState>(
         builder: (context, state) {
           return CustomScrollView(
@@ -353,6 +357,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Text('Create', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w800)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Tasks Bar (bottom entry to Task Manager) ─────────────────────────────────
+class _TasksBar extends StatelessWidget {
+  const _TasksBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.watch<FolioThemeNotifier>();
+    return Container(
+      color: theme.bg,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+          child: BlocBuilder<TaskBloc, TaskState>(
+            builder: (context, state) {
+              final pending = state is TaskLoaded ? state.active.length : 0;
+              return SizedBox(
+                width: double.infinity,
+                child: NeuButton(
+                  borderRadius: 20,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  onTap: () => Navigator.push(
+                      context, _neuRoute(const TaskManagerScreen())),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.checklist_rounded, color: theme.accent),
+                      const SizedBox(width: 8),
+                      Text('Tasks',
+                          style: GoogleFonts.nunito(
+                              color: theme.text,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15)),
+                      if (pending > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: theme.accentSoft,
+                              borderRadius: BorderRadius.circular(20)),
+                          child: Text('$pending',
+                              style: TextStyle(
+                                  color: theme.accent,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

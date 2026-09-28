@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/folder_model.dart';
 import '../models/document_model.dart';
 import '../models/page_model.dart';
+import '../models/task_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -23,9 +24,26 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) await _createTasksTable(db);
+  }
+
+  Future _createTasksTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT NOT NULL,
+        imagePaths TEXT,
+        isDone INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT NOT NULL
+      )
+    ''');
   }
 
   Future _createDB(Database db, int version) async {
@@ -57,6 +75,8 @@ class DatabaseHelper {
         FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
       )
     ''');
+
+    await _createTasksTable(db);
 
     // Insert a default "Uncategorized" folder
     await db.insert('folders', {
@@ -156,6 +176,35 @@ class DatabaseHelper {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  // Task CRUD
+  Future<int> insertTask(TaskItem task) async {
+    final db = await instance.database;
+    final map = task.toMap()..remove('id');
+    return await db.insert('tasks', map);
+  }
+
+  Future<List<TaskItem>> getAllTasks() async {
+    final db = await instance.database;
+    final result = await db.query('tasks', orderBy: 'createdAt DESC');
+    return result.map((json) => TaskItem.fromMap(json)).toList();
+  }
+
+  Future<int> setTaskDone(int id, bool done) async {
+    final db = await instance.database;
+    return await db.update('tasks', {'isDone': done ? 1 : 0},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteTask(int id) async {
+    final db = await instance.database;
+    return await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteCompletedTasks() async {
+    final db = await instance.database;
+    return await db.delete('tasks', where: 'isDone = 1');
   }
 
   Future close() async {

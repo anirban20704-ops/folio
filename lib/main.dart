@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'blocs/dashboard/dashboard_bloc.dart';
 import 'blocs/dashboard/dashboard_event.dart';
 import 'blocs/scanner/scanner_bloc.dart';
+import 'blocs/tasks/task_bloc.dart';
+import 'blocs/tasks/task_event.dart';
+import 'repositories/task_repository.dart';
 import 'repositories/document_repository.dart';
 import 'services/scanner_service.dart';
 import 'ui/screens/dashboard_screen.dart';
@@ -20,6 +23,7 @@ class FolioApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repository   = DocumentRepository();
+    final taskRepo     = TaskRepository();
     final scannerSvc   = ScannerService();
     final themeNotifier = FolioThemeNotifier();   // ← NEW
 
@@ -41,6 +45,9 @@ class FolioApp extends StatelessWidget {
               scannerService: scannerSvc,
               repository: repository,
             ),
+          ),
+          BlocProvider(
+            create: (_) => TaskBloc(repository: taskRepo)..add(LoadTasks()),
           ),
         ],
         child: Consumer<FolioThemeNotifier>(

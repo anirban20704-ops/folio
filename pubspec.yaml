@@ -26,6 +26,8 @@ dependencies:
   google_fonts: ^6.2.1
   share_plus: ^10.1.0
   image_cropper: ^8.0.2
+  speech_to_text: ^7.3.0
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
