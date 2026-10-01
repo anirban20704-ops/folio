@@ -11,7 +11,8 @@ class TaskRepository {
 
   /// Copies picked images into the app's own folder so they survive
   /// gallery/cache clean-ups, then stores the task.
-  Future<int> addTask(String description, List<String> sourceImagePaths) async {
+  Future<int> addTask(String description, List<String> sourceImagePaths,
+      {DateTime? deadline}) async {
     final saved = <String>[];
     if (sourceImagePaths.isNotEmpty) {
       final base = await getApplicationDocumentsDirectory();
@@ -28,10 +29,14 @@ class TaskRepository {
       description: description,
       imagePaths: saved,
       createdAt: DateTime.now(),
+      deadline: deadline,
     ));
   }
 
   Future<int> setDone(int id, bool done) => _db.setTaskDone(id, done);
+
+  Future<int> setDeadline(int id, DateTime? deadline) =>
+      _db.setTaskDeadline(id, deadline);
 
   Future<void> deleteTask(int id) async {
     final tasks = await _db.getAllTasks();

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../blocs/tasks/task_bloc.dart';
 import '../../blocs/tasks/task_event.dart';
 import '../../core/folio_theme.dart';
+import '../../services/date_parser.dart';
 import '../../services/scanner_service.dart';
 import '../../services/voice_note_service.dart';
 import 'neu_widgets.dart';
@@ -24,10 +25,48 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   final List<String> _images = [];
   bool _listening = false;
   String _baseText = '';
+  DateTime? _deadline;
+  bool _deadlineEditedManually = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_detectDeadline);
+  }
+
+  void _detectDeadline() {
+    if (_deadlineEditedManually) return; // user already set/cleared it by hand
+    final found = DateParser.extract(_controller.text);
+    if (found != _deadline) setState(() => _deadline = found);
+  }
+
+  Future<void> _pickDeadline() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deadline ?? now,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) {
+      setState(() {
+        _deadline = DateTime(picked.year, picked.month, picked.day, 23, 59);
+        _deadlineEditedManually = true;
+      });
+    }
+  }
+
+  void _clearDeadline() {
+    setState(() {
+      _deadline = null;
+      _deadlineEditedManually = true;
+    });
+  }
 
   @override
   void dispose() {
     _voice.stop();
+    _controller.removeListener(_detectDeadline);
     _controller.dispose();
     super.dispose();
   }
@@ -45,8 +84,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     });
     if (!ok) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Speech recognition unavailable. Check mic permission.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_voice.lastError ??
+              'Speech recognition unavailable. Check mic permission.')));
       return;
     }
     _baseText = _controller.text.trim();
@@ -78,6 +118,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     context.read<TaskBloc>().add(AddTask(
           text.isEmpty ? 'Photo task' : text,
           List.of(_images),
+          deadline: _deadline,
         ));
     HapticFeedback.lightImpact();
     Navigator.pop(context);
@@ -180,7 +221,49 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                 ),
               ],
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: _pickDeadline,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _deadline == null ? theme.bg : theme.accentSoft,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: _deadline == null ? theme.subtleShadow : null,
+                    border: _deadline == null
+                        ? Border.all(color: theme.textSub.withValues(alpha: 0.4))
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event_rounded,
+                          size: 15,
+                          color: _deadline == null ? theme.textSub : theme.accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        _deadline == null
+                            ? 'Add a deadline'
+                            : DateFormat.yMMMd().format(_deadline!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _deadline == null ? theme.textSub : theme.accent,
+                        ),
+                      ),
+                      if (_deadline != null) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: _clearDeadline,
+                          child: Icon(Icons.close_rounded,
+                              size: 14, color: theme.accent),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   NeuIconButton(

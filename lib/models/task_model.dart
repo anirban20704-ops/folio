@@ -7,6 +7,7 @@ class TaskItem extends Equatable {
   final List<String> imagePaths;
   final bool isDone;
   final DateTime createdAt;
+  final DateTime? deadline;
 
   const TaskItem({
     this.id,
@@ -14,6 +15,7 @@ class TaskItem extends Equatable {
     this.imagePaths = const [],
     this.isDone = false,
     required this.createdAt,
+    this.deadline,
   });
 
   TaskItem copyWith({
@@ -22,6 +24,8 @@ class TaskItem extends Equatable {
     List<String>? imagePaths,
     bool? isDone,
     DateTime? createdAt,
+    DateTime? deadline,
+    bool clearDeadline = false,
   }) {
     return TaskItem(
       id: id ?? this.id,
@@ -29,6 +33,7 @@ class TaskItem extends Equatable {
       imagePaths: imagePaths ?? this.imagePaths,
       isDone: isDone ?? this.isDone,
       createdAt: createdAt ?? this.createdAt,
+      deadline: clearDeadline ? null : (deadline ?? this.deadline),
     );
   }
 
@@ -38,6 +43,7 @@ class TaskItem extends Equatable {
         'imagePaths': jsonEncode(imagePaths),
         'isDone': isDone ? 1 : 0,
         'createdAt': createdAt.toIso8601String(),
+        'deadline': deadline?.toIso8601String(),
       };
 
   factory TaskItem.fromMap(Map<String, dynamic> map) {
@@ -50,9 +56,15 @@ class TaskItem extends Equatable {
           : List<String>.from(jsonDecode(raw) as List),
       isDone: (map['isDone'] as int) == 1,
       createdAt: DateTime.parse(map['createdAt'] as String),
+      deadline: map['deadline'] == null
+          ? null
+          : DateTime.parse(map['deadline'] as String),
     );
   }
 
+  bool get isOverdue =>
+      !isDone && deadline != null && deadline!.isBefore(DateTime.now());
   @override
-  List<Object?> get props => [id, description, imagePaths, isDone, createdAt];
+  List<Object?> get props =>
+      [id, description, imagePaths, isDone, createdAt, deadline];
 }

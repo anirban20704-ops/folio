@@ -9,10 +9,14 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   TaskBloc({required this.repository}) : super(TaskInitial()) {
     on<LoadTasks>((e, emit) => _reload(emit));
     on<AddTask>((e, emit) async {
-      await _run(emit, () => repository.addTask(e.description, e.imagePaths));
+      await _run(emit, () => repository.addTask(e.description, e.imagePaths,
+          deadline: e.deadline));
     });
     on<ToggleTask>((e, emit) async {
       await _run(emit, () => repository.setDone(e.id, e.done));
+    });
+    on<SetDeadline>((e, emit) async {
+      await _run(emit, () => repository.setDeadline(e.id, e.deadline));
     });
     on<DeleteTask>((e, emit) async {
       await _run(emit, () => repository.deleteTask(e.id));

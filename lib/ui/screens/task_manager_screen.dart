@@ -9,6 +9,7 @@ import '../../blocs/tasks/task_event.dart';
 import '../../blocs/tasks/task_state.dart';
 import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
+import 'task_calendar_screen.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/neu_widgets.dart';
 import '../widgets/task_card.dart';
@@ -24,32 +25,43 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
   final _leftPopper = ConfettiController(duration: const Duration(seconds: 1));
   final _rightPopper = ConfettiController(duration: const Duration(seconds: 1));
   bool _showCompleted = false;
+  late final TaskBloc _bloc;
+  // Tasks ticked but not yet saved (waiting for the tick animation to play).
+  final Set<int> _pendingDone = {};
 
   @override
   void initState() {
     super.initState();
-    context.read<TaskBloc>().add(LoadTasks());
+    _bloc = context.read<TaskBloc>()..add(LoadTasks());
   }
 
   @override
   void dispose() {
+    // Never lose a completion if the user leaves during the animation delay.
+    for (final id in _pendingDone) {
+      _bloc.add(ToggleTask(id, true));
+    }
+    _pendingDone.clear();
     _leftPopper.dispose();
     _rightPopper.dispose();
     super.dispose();
   }
 
   void _onToggle(TaskItem task, bool done) {
-    final bloc = context.read<TaskBloc>();
+    final id = task.id!;
     if (done) {
       HapticFeedback.mediumImpact();
       _leftPopper.play();
       _rightPopper.play();
+      _pendingDone.add(id);
       // small delay so the tick animation is visible before the card moves
       Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) bloc.add(ToggleTask(task.id!, true));
+        if (_pendingDone.remove(id)) _bloc.add(ToggleTask(id, true));
       });
     } else {
-      bloc.add(ToggleTask(task.id!, false));
+      // Un-ticked before it was saved: nothing to write, DB still says "not done".
+      if (_pendingDone.remove(id)) return;
+      _bloc.add(ToggleTask(id, false));
     }
   }
 
@@ -124,6 +136,16 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -1)),
                             ),
+                            NeuIconButton(
+                              icon: Icons.calendar_month_rounded,
+                              size: 44,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const TaskCalendarScreen()),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
                             NeuButton(
                               filled: true,
                               borderRadius: 20,

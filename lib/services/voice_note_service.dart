@@ -5,14 +5,20 @@ import 'package:speech_to_text/speech_to_text.dart';
 class VoiceNoteService {
   final SpeechToText _stt = SpeechToText();
   bool _ready = false;
+  String? lastError;
 
   bool get isListening => _stt.isListening;
 
   Future<bool> init({void Function(String status)? onStatus}) async {
+    lastError = null;
     _ready = await _stt.initialize(
       onStatus: onStatus,
-      onError: (_) {},
+      onError: (e) => lastError = '${e.errorMsg}${e.permanent ? ' (permanent)' : ''}',
     );
+    if (!_ready) {
+      lastError ??=
+          'Speech recognition isn\'t available on this device, or the microphone permission was denied.';
+    }
     return _ready;
   }
 

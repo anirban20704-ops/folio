@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
+import 'package:intl/intl.dart';
 import 'neu_widgets.dart';
 
 class TaskCard extends StatefulWidget {
@@ -56,15 +57,16 @@ class _TaskCardState extends State<TaskCard> {
     return Dismissible(
       key: ValueKey('task_${task.id}'),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context, theme),
       onDismissed: (_) => widget.onDelete(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: Colors.redAccent.withValues(alpha: 0.85),
+          color: Colors.redAccent.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 26),
       ),
       child: NeuBox(
         borderRadius: 20,
@@ -117,6 +119,12 @@ class _TaskCardState extends State<TaskCard> {
                     decoration: BoxDecoration(
                       color: _done ? theme.accent : theme.bg,
                       borderRadius: BorderRadius.circular(9),
+                      border: _done
+                          ? null
+                          : Border.all(
+                              color: theme.textSub.withValues(alpha: 0.55),
+                              width: 1.6,
+                            ),
                       boxShadow:
                           _done ? theme.pressedShadow : theme.subtleShadow,
                     ),
@@ -131,25 +139,92 @@ class _TaskCardState extends State<TaskCard> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 250),
-                    style: GoogleFonts.nunito(
-                      color: _done ? theme.textSub : theme.text,
-                      fontSize: 15,
-                      height: 1.35,
-                      fontWeight: FontWeight.w700,
-                      decoration: _done
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                      decorationColor: theme.textSub,
-                    ),
-                    child: Text(task.description),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 250),
+                        style: GoogleFonts.nunito(
+                          color: _done ? theme.textSub : theme.text,
+                          fontSize: 15,
+                          height: 1.35,
+                          fontWeight: FontWeight.w700,
+                          decoration: _done
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: theme.textSub,
+                        ),
+                        child: Text(task.description),
+                      ),
+                      if (task.deadline != null) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: task.isOverdue
+                                ? Colors.redAccent.withValues(alpha: 0.15)
+                                : theme.accentSoft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.event_rounded,
+                                  size: 12,
+                                  color: task.isOverdue
+                                      ? Colors.redAccent
+                                      : theme.accent),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat.yMMMd().format(task.deadline!),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: task.isOverdue
+                                      ? Colors.redAccent
+                                      : theme.accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<bool?> _confirmDelete(BuildContext context, FolioThemeNotifier theme) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.bg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Delete Task?',
+            style: TextStyle(color: theme.text, fontWeight: FontWeight.w900)),
+        content: Text(
+          'Delete "${widget.task.description}"? This cannot be undone.',
+          style: TextStyle(color: theme.textSub, fontWeight: FontWeight.w600),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: TextStyle(color: theme.textSub, fontWeight: FontWeight.w700)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w800)),
+          ),
+        ],
       ),
     );
   }

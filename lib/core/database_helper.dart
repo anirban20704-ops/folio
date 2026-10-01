@@ -24,14 +24,18 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) await _createTasksTable(db);
+    if (oldVersion < 2) {
+      await _createTasksTable(db); // already includes the deadline column
+    } else if (oldVersion < 3) {
+      await db.execute('ALTER TABLE tasks ADD COLUMN deadline TEXT');
+    }
   }
 
   Future _createTasksTable(Database db) async {
@@ -41,7 +45,8 @@ class DatabaseHelper {
         description TEXT NOT NULL,
         imagePaths TEXT,
         isDone INTEGER NOT NULL DEFAULT 0,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        deadline TEXT
       )
     ''');
   }
@@ -194,6 +199,12 @@ class DatabaseHelper {
   Future<int> setTaskDone(int id, bool done) async {
     final db = await instance.database;
     return await db.update('tasks', {'isDone': done ? 1 : 0},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> setTaskDeadline(int id, DateTime? deadline) async {
+    final db = await instance.database;
+    return await db.update('tasks', {'deadline': deadline?.toIso8601String()},
         where: 'id = ?', whereArgs: [id]);
   }
 
