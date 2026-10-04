@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:typed_data';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
 import 'package:path_provider/path_provider.dart';

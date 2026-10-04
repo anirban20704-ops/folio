@@ -74,13 +74,41 @@ class DocumentListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        DateFormat.yMMMd().format(doc.createdAt),
-                        style: GoogleFonts.nunito(
-                          color: theme.textSub,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            DateFormat.yMMMd().format(doc.createdAt),
+                            style: GoogleFonts.nunito(
+                              color: theme.textSub,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (doc.deadline != null) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.event_rounded,
+                                size: 12,
+                                color: doc.notifyEnabled
+                                    ? theme.accent
+                                    : theme.textSub),
+                            const SizedBox(width: 2),
+                            Text(
+                              DateFormat('MMM d').format(doc.deadline!),
+                              style: GoogleFonts.nunito(
+                                color: doc.notifyEnabled
+                                    ? theme.accent
+                                    : theme.textSub,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (doc.notifyEnabled) ...[
+                              const SizedBox(width: 3),
+                              Icon(Icons.notifications_rounded,
+                                  size: 11, color: theme.accent),
+                            ],
+                          ],
+                        ],
                       ),
                     ],
                   ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../blocs/scanner/scanner_bloc.dart';
 import '../../blocs/scanner/scanner_event.dart';
@@ -10,6 +9,7 @@ import '../../blocs/dashboard/dashboard_event.dart';
 import '../../blocs/dashboard/dashboard_state.dart';
 import '../../core/folio_theme.dart';
 import '../widgets/neu_widgets.dart';
+import '../widgets/deadline_notify_field.dart';
 import 'studio_screen.dart';
 import 'dart:io';
 
@@ -23,6 +23,8 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isReorderMode = false;
+  DateTime? _deadline;
+  bool _notifyEnabled = false;
 
   @override
   void dispose() {
@@ -104,8 +106,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ),
                 ),
 
-                // ─── Name field (only when images picked) ────────────────
-                if (hasPicked)
+                // ─── Name field + optional deadline (only when images picked) ──
+                if (hasPicked) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                     child: NeuTextField(
@@ -114,6 +116,18 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       prefixIcon: Icons.edit_note_rounded,
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                    child: DeadlineNotifyField(
+                      initialDeadline: _deadline,
+                      initialNotifyEnabled: _notifyEnabled,
+                      onChanged: (deadline, notify) => setState(() {
+                        _deadline = deadline;
+                        _notifyEnabled = notify;
+                      }),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
@@ -260,6 +274,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                             context.read<ScannerBloc>().add(SaveDocument(
                               name: _nameController.text,
                               folderId: folder.id!,
+                              deadline: _deadline,
+                              notifyEnabled: _notifyEnabled,
                             ));
                             Navigator.pop(ctx);
                           },
@@ -369,7 +385,7 @@ class _ReorderList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       physics: const BouncingScrollPhysics(),
       itemCount: images.length,
-      onReorder: (o, n) => context.read<ScannerBloc>().add(ReorderImages(o, n)),
+      onReorderItem: (o, n) => context.read<ScannerBloc>().add(ReorderImages(o, n)),
       itemBuilder: (context, index) => Padding(
         key: ValueKey(images[index].path),
         padding: const EdgeInsets.only(bottom: 12),

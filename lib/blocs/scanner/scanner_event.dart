@@ -43,8 +43,15 @@ class UpdateImage extends ScannerEvent {
 class SaveDocument extends ScannerEvent {
   final String name;
   final int folderId;
-  const SaveDocument({required this.name, required this.folderId});
+  final DateTime? deadline;
+  final bool notifyEnabled;
+  const SaveDocument({
+    required this.name,
+    required this.folderId,
+    this.deadline,
+    this.notifyEnabled = false,
+  });
 
   @override
-  List<Object?> get props => [name, folderId];
+  List<Object?> get props => [name, folderId, deadline, notifyEnabled];
 }

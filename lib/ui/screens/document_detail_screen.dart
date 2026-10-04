@@ -12,12 +12,10 @@ import '../../services/pdf_service.dart';
 import '../../services/scanner_service.dart';
 import '../../core/folio_theme.dart';
 import '../widgets/neu_widgets.dart';
+import '../widgets/deadline_notify_field.dart';
 import 'studio_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-
-bool _isSharing = false;
-bool _isOpeningPdf = false;
 
 class DocumentDetailScreen extends StatefulWidget {
   final Document document;
@@ -37,7 +35,22 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   final PdfService _pdfService = PdfService();
   bool _isReorderMode = false;
   bool _isExtracting = false;
+  bool _isSharing = false;
   List<PageModel>? _pages;
+  late Document _doc = widget.document;
+
+  Future<void> _onDeadlineChanged(DateTime? deadline, bool notify) async {
+    setState(() => _doc = _doc.copyWith(
+          deadline: deadline,
+          clearDeadline: deadline == null,
+          notifyEnabled: notify,
+        ));
+    await widget.repository.updateDeadline(
+      widget.document,
+      deadline: deadline,
+      notifyEnabled: notify,
+    );
+  }
 
   @override
   void initState() {
@@ -185,7 +198,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   }
 
   Future<void> _exportAndShare() async {
-    if (_pages == null || _pages!.isEmpty) return;
+    if (_isSharing || _pages == null || _pages!.isEmpty) return;
     setState(() => _isSharing = true);
     try {
       final images = _pages!.map((p) => File(p.imagePath)).toList();
@@ -196,20 +209,6 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isSharing = false);
-    }
-  }
-
-  Future<void> _openPdf() async {
-    if (_pages == null || _pages!.isEmpty) return;
-    setState(() => _isOpeningPdf = true);
-    try {
-      final images = _pages!.map((p) => File(p.imagePath)).toList();
-      final pdfFile = await _pdfService.generatePdf(images, widget.document.name);
-      await OpenFilex.open(pdfFile.path);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    } finally {
-      if (mounted) setState(() => _isOpeningPdf = false);
     }
   }
 
@@ -247,6 +246,16 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // ─── Deadline / reminder (optional) ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+              child: DeadlineNotifyField(
+                initialDeadline: _doc.deadline,
+                initialNotifyEnabled: _doc.notifyEnabled,
+                onChanged: _onDeadlineChanged,
               ),
             ),
 
@@ -434,9 +443,8 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       physics: const BouncingScrollPhysics(),
       itemCount: _pages!.length,
-      onReorder: (oldIndex, newIndex) async {
+      onReorderItem: (oldIndex, newIndex) async {
         setState(() {
-          if (oldIndex < newIndex) newIndex -= 1;
           final item = _pages!.removeAt(oldIndex);
           _pages!.insert(newIndex, item);
         });

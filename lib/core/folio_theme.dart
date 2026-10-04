@@ -112,7 +112,7 @@ class FolioThemeNotifier extends ChangeNotifier {
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: FolioColors.dayBg,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: FolioColors.dayAccent,
         secondary: FolioColors.dayAccent,
         surface: FolioColors.dayBg,
@@ -152,7 +152,7 @@ class FolioThemeNotifier extends ChangeNotifier {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: FolioColors.nightBg,
-      colorScheme: ColorScheme.dark(
+      colorScheme: const ColorScheme.dark(
         primary: FolioColors.nightAccent,
         secondary: FolioColors.nightAccent,
         surface: FolioColors.nightBg,

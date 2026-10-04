@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
 import 'package:intl/intl.dart';
+import 'add_task_sheet.dart';
 import 'neu_widgets.dart';
 
 class TaskCard extends StatefulWidget {
@@ -37,6 +38,15 @@ class _TaskCardState extends State<TaskCard> {
     widget.onToggle(_done);
   }
 
+  void _openEdit(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddTaskSheet(existing: widget.task),
+    );
+  }
+
   void _openImage(BuildContext context, String path) {
     showDialog(
       context: context,
@@ -56,10 +66,27 @@ class _TaskCardState extends State<TaskCard> {
 
     return Dismissible(
       key: ValueKey('task_${task.id}'),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirmDelete(context, theme),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Right swipe: tick/untick in place, never remove the card.
+          _flip();
+          return false;
+        }
+        return _confirmDelete(context, theme);
+      },
       onDismissed: (_) => widget.onDelete(),
       background: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 24),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Icon(Icons.check_circle_outline_rounded,
+            color: Colors.green, size: 26),
+      ),
+      secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
@@ -68,7 +95,9 @@ class _TaskCardState extends State<TaskCard> {
         ),
         child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 26),
       ),
-      child: NeuBox(
+      child: GestureDetector(
+        onDoubleTap: () => _openEdit(context),
+        child: NeuBox(
         borderRadius: 20,
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -156,6 +185,30 @@ class _TaskCardState extends State<TaskCard> {
                         ),
                         child: Text(task.description),
                       ),
+                      if (task.isDaily) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: theme.accentSoft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.repeat_rounded,
+                                  size: 12, color: theme.accent),
+                              const SizedBox(width: 4),
+                              Text('Everyday',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: theme.accent)),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (task.deadline != null) ...[
                         const SizedBox(height: 6),
                         Container(
@@ -177,7 +230,10 @@ class _TaskCardState extends State<TaskCard> {
                                       : theme.accent),
                               const SizedBox(width: 4),
                               Text(
-                                DateFormat.yMMMd().format(task.deadline!),
+                                task.isDaily
+                                    ? DateFormat('h:mm a').format(task.deadline!)
+                                    : DateFormat('MMM d, h:mm a')
+                                        .format(task.deadline!),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -186,6 +242,14 @@ class _TaskCardState extends State<TaskCard> {
                                       : theme.accent,
                                 ),
                               ),
+                              if (task.notifyEnabled) ...[
+                                const SizedBox(width: 4),
+                                Icon(Icons.notifications_rounded,
+                                    size: 11,
+                                    color: task.isOverdue
+                                        ? Colors.redAccent
+                                        : theme.accent),
+                              ],
                             ],
                           ),
                         ),
@@ -197,6 +261,7 @@ class _TaskCardState extends State<TaskCard> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

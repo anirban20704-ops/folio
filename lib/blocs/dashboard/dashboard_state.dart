@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:pdf/widgets.dart' hide Document;
 import '../../models/folder_model.dart';
 import '../../models/document_model.dart';
-import '../../models/page_model.dart';
 
 abstract class DashboardState extends Equatable {
   const DashboardState();

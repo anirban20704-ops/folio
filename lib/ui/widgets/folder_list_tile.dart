@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/folder_model.dart';
 import '../../core/folio_theme.dart';
-import '../widgets/neu_widgets.dart';
+
 
 class FolderListTile extends StatelessWidget {
   final Folder folder;

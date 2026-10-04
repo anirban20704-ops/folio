@@ -8,6 +8,9 @@ class TaskItem extends Equatable {
   final bool isDone;
   final DateTime createdAt;
   final DateTime? deadline;
+  final bool isDaily;
+  final DateTime? completedDate;
+  final bool notifyEnabled;
 
   const TaskItem({
     this.id,
@@ -16,6 +19,9 @@ class TaskItem extends Equatable {
     this.isDone = false,
     required this.createdAt,
     this.deadline,
+    this.isDaily = false,
+    this.completedDate,
+    this.notifyEnabled = false,
   });
 
   TaskItem copyWith({
@@ -26,6 +32,10 @@ class TaskItem extends Equatable {
     DateTime? createdAt,
     DateTime? deadline,
     bool clearDeadline = false,
+    bool? isDaily,
+    DateTime? completedDate,
+    bool clearCompletedDate = false,
+    bool? notifyEnabled,
   }) {
     return TaskItem(
       id: id ?? this.id,
@@ -34,6 +44,10 @@ class TaskItem extends Equatable {
       isDone: isDone ?? this.isDone,
       createdAt: createdAt ?? this.createdAt,
       deadline: clearDeadline ? null : (deadline ?? this.deadline),
+      isDaily: isDaily ?? this.isDaily,
+      completedDate:
+          clearCompletedDate ? null : (completedDate ?? this.completedDate),
+      notifyEnabled: notifyEnabled ?? this.notifyEnabled,
     );
   }
 
@@ -44,6 +58,9 @@ class TaskItem extends Equatable {
         'isDone': isDone ? 1 : 0,
         'createdAt': createdAt.toIso8601String(),
         'deadline': deadline?.toIso8601String(),
+        'isDaily': isDaily ? 1 : 0,
+        'completedDate': completedDate?.toIso8601String(),
+        'notifyEnabled': notifyEnabled ? 1 : 0,
       };
 
   factory TaskItem.fromMap(Map<String, dynamic> map) {
@@ -59,12 +76,27 @@ class TaskItem extends Equatable {
       deadline: map['deadline'] == null
           ? null
           : DateTime.parse(map['deadline'] as String),
+      isDaily: (map['isDaily'] as int? ?? 0) == 1,
+      completedDate: map['completedDate'] == null
+          ? null
+          : DateTime.parse(map['completedDate'] as String),
+      notifyEnabled: (map['notifyEnabled'] as int? ?? 0) == 1,
     );
   }
 
   bool get isOverdue =>
       !isDone && deadline != null && deadline!.isBefore(DateTime.now());
+
   @override
-  List<Object?> get props =>
-      [id, description, imagePaths, isDone, createdAt, deadline];
+  List<Object?> get props => [
+        id,
+        description,
+        imagePaths,
+        isDone,
+        createdAt,
+        deadline,
+        isDaily,
+        completedDate,
+        notifyEnabled,
+      ];
 }

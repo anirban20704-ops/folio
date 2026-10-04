@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../models/task_model.dart';
 
 abstract class TaskEvent extends Equatable {
   const TaskEvent();
@@ -12,9 +13,39 @@ class AddTask extends TaskEvent {
   final String description;
   final List<String> imagePaths;
   final DateTime? deadline;
-  const AddTask(this.description, this.imagePaths, {this.deadline});
+  final bool isDaily;
+  final bool notifyEnabled;
+  const AddTask(this.description, this.imagePaths,
+      {this.deadline, this.isDaily = false, this.notifyEnabled = false});
   @override
-  List<Object?> get props => [description, imagePaths, deadline];
+  List<Object?> get props =>
+      [description, imagePaths, deadline, isDaily, notifyEnabled];
+}
+
+class UpdateTask extends TaskEvent {
+  final TaskItem original;
+  final String description;
+  final List<String> finalImagePaths;
+  final DateTime? deadline;
+  final bool isDaily;
+  final bool notifyEnabled;
+  const UpdateTask({
+    required this.original,
+    required this.description,
+    required this.finalImagePaths,
+    this.deadline,
+    required this.isDaily,
+    this.notifyEnabled = false,
+  });
+  @override
+  List<Object?> get props => [
+        original,
+        description,
+        finalImagePaths,
+        deadline,
+        isDaily,
+        notifyEnabled,
+      ];
 }
 
 class ToggleTask extends TaskEvent {

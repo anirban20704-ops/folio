@@ -90,10 +90,8 @@ class ScannerBloc extends Bloc<ScannerEvent, ScannerState> {
       final currentState = state as ScannerImagesPicked;
       final updatedImages = List<File>.from(currentState.images);
 
-      int newIndex = event.newIndex;
-      if (event.oldIndex < newIndex) {
-        newIndex -= 1;
-      }
+      // onReorderItem already hands us the post-removal index.
+      final int newIndex = event.newIndex;
       final File image = updatedImages.removeAt(event.oldIndex);
       updatedImages.insert(newIndex, image);
 
@@ -122,7 +120,12 @@ class ScannerBloc extends Bloc<ScannerEvent, ScannerState> {
       final currentState = state as ScannerImagesPicked;
       emit(ScannerLoading());
       try {
-        final docId = await repository.createDocument(event.folderId, event.name);
+        final docId = await repository.createDocument(
+          event.folderId,
+          event.name,
+          deadline: event.deadline,
+          notifyEnabled: event.notifyEnabled,
+        );
 
         for (int i = 0; i < currentState.images.length; i++) {
           final permanentFile = await scannerService.saveImageToPermanentStorage(currentState.images[i]);

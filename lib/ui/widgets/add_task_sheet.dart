@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../../blocs/tasks/task_bloc.dart';
 import '../../blocs/tasks/task_event.dart';
 import '../../core/folio_theme.dart';
 import '../../services/date_parser.dart';
+import '../../models/task_model.dart';
 import '../../services/scanner_service.dart';
 import '../../services/voice_note_service.dart';
+import 'deadline_notify_field.dart';
 import 'neu_widgets.dart';
 
 class AddTaskSheet extends StatefulWidget {
-  const AddTaskSheet({super.key});
+  /// Pass an existing task to edit it in place; omit to create a new one.
+  final TaskItem? existing;
+  const AddTaskSheet({super.key, this.existing});
 
   @override
   State<AddTaskSheet> createState() => _AddTaskSheetState();
@@ -27,38 +30,46 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   String _baseText = '';
   DateTime? _deadline;
   bool _deadlineEditedManually = false;
+  bool _isDaily = false;
+  bool _notifyEnabled = false;
+
+  bool get _isEditing => widget.existing != null;
 
   @override
   void initState() {
     super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      _controller.text = existing.description;
+      _images.addAll(existing.imagePaths);
+      _deadline = existing.deadline;
+      _deadlineEditedManually = true; // don't let auto-detect override an edit
+      _isDaily = existing.isDaily;
+      _notifyEnabled = existing.notifyEnabled;
+    }
     _controller.addListener(_detectDeadline);
   }
 
   void _detectDeadline() {
-    if (_deadlineEditedManually) return; // user already set/cleared it by hand
+    if (_deadlineEditedManually || _isDaily) return;
     final found = DateParser.extract(_controller.text);
     if (found != _deadline) setState(() => _deadline = found);
   }
 
-  Future<void> _pickDeadline() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _deadline ?? now,
-      firstDate: now.subtract(const Duration(days: 1)),
-      lastDate: now.add(const Duration(days: 365 * 3)),
-    );
-    if (picked != null) {
-      setState(() {
-        _deadline = DateTime(picked.year, picked.month, picked.day, 23, 59);
+  void _toggleDaily(bool value) {
+    setState(() {
+      _isDaily = value;
+      if (value) {
+        _deadline = null;
         _deadlineEditedManually = true;
-      });
-    }
+      }
+    });
   }
 
-  void _clearDeadline() {
+  void _onDeadlineFieldChanged(DateTime? deadline, bool notify) {
     setState(() {
-      _deadline = null;
+      _deadline = deadline;
+      _notifyEnabled = notify;
       _deadlineEditedManually = true;
     });
   }
@@ -94,7 +105,18 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     await _voice.start((words, isFinal) {
       if (!mounted) return;
       final joined = _baseText.isEmpty ? words : '$_baseText $words';
-      _controller.text = isFinal ? VoiceNoteService.tidy(joined) : joined;
+      if (isFinal) {
+        // Commit this chunk into _baseText so a LATER chunk in the same
+        // listening session appends after it instead of replacing it.
+        // (speech_to_text can finalise more than once per session if you
+        // pause briefly - without this, the next chunk wiped everything
+        // said before it, which is why words like "tomorrow" spoken after
+        // a short pause could vanish along with the rest of the sentence.)
+        _baseText = VoiceNoteService.tidy(joined);
+        _controller.text = _baseText;
+      } else {
+        _controller.text = joined;
+      }
       _controller.selection =
           TextSelection.collapsed(offset: _controller.text.length);
     });
@@ -115,11 +137,27 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void _save() {
     final text = _controller.text.trim();
     if (text.isEmpty && _images.isEmpty) return;
-    context.read<TaskBloc>().add(AddTask(
-          text.isEmpty ? 'Photo task' : text,
-          List.of(_images),
-          deadline: _deadline,
-        ));
+    final description = text.isEmpty ? 'Photo task' : text;
+
+    final bloc = context.read<TaskBloc>();
+    if (_isEditing) {
+      bloc.add(UpdateTask(
+        original: widget.existing!,
+        description: description,
+        finalImagePaths: List.of(_images),
+        deadline: _deadline,
+        isDaily: _isDaily,
+        notifyEnabled: _notifyEnabled,
+      ));
+    } else {
+      bloc.add(AddTask(
+        description,
+        List.of(_images),
+        deadline: _deadline,
+        isDaily: _isDaily,
+        notifyEnabled: _notifyEnabled,
+      ));
+    }
     HapticFeedback.lightImpact();
     Navigator.pop(context);
   }
@@ -152,7 +190,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('New task',
+              Text(_isEditing ? 'Edit task' : 'New task',
                   style: GoogleFonts.nunito(
                       color: theme.text,
                       fontSize: 22,
@@ -222,46 +260,32 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ],
               const SizedBox(height: 14),
-              GestureDetector(
-                onTap: _pickDeadline,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: _deadline == null ? theme.bg : theme.accentSoft,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: _deadline == null ? theme.subtleShadow : null,
-                    border: _deadline == null
-                        ? Border.all(color: theme.textSub.withValues(alpha: 0.4))
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.event_rounded,
-                          size: 15,
-                          color: _deadline == null ? theme.textSub : theme.accent),
-                      const SizedBox(width: 6),
-                      Text(
-                        _deadline == null
-                            ? 'Add a deadline'
-                            : DateFormat.yMMMd().format(_deadline!),
-                        style: TextStyle(
-                          fontSize: 12,
+              Row(
+                children: [
+                  Icon(Icons.repeat_rounded,
+                      size: 17,
+                      color: _isDaily ? theme.accent : theme.textSub),
+                  const SizedBox(width: 8),
+                  Text('Repeat every day',
+                      style: TextStyle(
+                          color: theme.text,
                           fontWeight: FontWeight.w700,
-                          color: _deadline == null ? theme.textSub : theme.accent,
-                        ),
-                      ),
-                      if (_deadline != null) ...[
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: _clearDeadline,
-                          child: Icon(Icons.close_rounded,
-                              size: 14, color: theme.accent),
-                        ),
-                      ],
-                    ],
+                          fontSize: 13)),
+                  const Spacer(),
+                  Switch.adaptive(
+                    value: _isDaily,
+                    activeThumbColor: theme.accent,
+                    onChanged: _toggleDaily,
                   ),
-                ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              DeadlineNotifyField(
+                key: ValueKey('deadline_field_$_isDaily'),
+                initialDeadline: _deadline,
+                initialNotifyEnabled: _notifyEnabled,
+                timeOnlyMode: _isDaily,
+                onChanged: _onDeadlineFieldChanged,
               ),
               const SizedBox(height: 14),
               Row(
@@ -293,7 +317,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                     onTap: _save,
-                    child: Text('Add',
+                    child: Text(_isEditing ? 'Save' : 'Add',
                         style: GoogleFonts.nunito(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,

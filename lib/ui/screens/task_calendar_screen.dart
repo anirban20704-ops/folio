@@ -229,6 +229,14 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                                       ),
                                     ),
                                   ),
+                                  Text(
+                                    DateFormat('h:mm a').format(t.deadline!),
+                                    style: TextStyle(
+                                      color: theme.textSub,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             );

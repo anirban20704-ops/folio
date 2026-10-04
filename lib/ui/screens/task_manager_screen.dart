@@ -109,6 +109,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
           BlocBuilder<TaskBloc, TaskState>(
             builder: (context, state) {
               final loaded = state is TaskLoaded ? state : null;
+              final daily = loaded?.daily ?? const <TaskItem>[];
               final active = loaded?.active ?? const <TaskItem>[];
               final done = loaded?.completed ?? const <TaskItem>[];
 
@@ -172,6 +173,41 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  if (daily.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                        child: Row(
+                          children: [
+                            Icon(Icons.repeat_rounded,
+                                size: 16, color: theme.accent),
+                            const SizedBox(width: 6),
+                            Text('Everyday',
+                                style: GoogleFonts.nunito(
+                                    color: theme.text,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverList.separated(
+                        itemCount: daily.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (_, i) => TaskCard(
+                          key: ValueKey('d_${daily[i].id}'),
+                          task: daily[i],
+                          onToggle: (d) => _onToggle(daily[i], d),
+                          onDelete: () => context
+                              .read<TaskBloc>()
+                              .add(DeleteTask(daily[i].id!)),
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                  ],
                   if (state is TaskError)
                     SliverToBoxAdapter(
                       child: Padding(
@@ -180,7 +216,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                             style: TextStyle(color: theme.textSub)),
                       ),
                     )
-                  else if (active.isEmpty)
+                  else if (active.isEmpty && daily.isEmpty && done.isEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),

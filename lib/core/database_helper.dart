@@ -1,5 +1,4 @@
 import 'package:path/path.dart';
-import 'package:pdf/widgets.dart' hide Document;
 import 'package:sqflite/sqflite.dart';
 import '../models/folder_model.dart';
 import '../models/document_model.dart';
@@ -24,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -32,9 +31,23 @@ class DatabaseHelper {
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await _createTasksTable(db); // already includes the deadline column
-    } else if (oldVersion < 3) {
+      await _createTasksTable(db); // already includes deadline/isDaily/completedDate
+      return;
+    }
+    if (oldVersion < 3) {
       await db.execute('ALTER TABLE tasks ADD COLUMN deadline TEXT');
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+          'ALTER TABLE tasks ADD COLUMN isDaily INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE tasks ADD COLUMN completedDate TEXT');
+    }
+    if (oldVersion < 5) {
+      await db.execute(
+          'ALTER TABLE tasks ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE documents ADD COLUMN deadline TEXT');
+      await db.execute(
+          'ALTER TABLE documents ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');
     }
   }
 
@@ -46,7 +59,10 @@ class DatabaseHelper {
         imagePaths TEXT,
         isDone INTEGER NOT NULL DEFAULT 0,
         createdAt TEXT NOT NULL,
-        deadline TEXT
+        deadline TEXT,
+        isDaily INTEGER NOT NULL DEFAULT 0,
+        completedDate TEXT,
+        notifyEnabled INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -66,6 +82,8 @@ class DatabaseHelper {
         folderId INTEGER NOT NULL,
         name TEXT NOT NULL,
         createdAt TEXT NOT NULL,
+        deadline TEXT,
+        notifyEnabled INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (folderId) REFERENCES folders (id) ON DELETE CASCADE
       )
     ''');
@@ -127,6 +145,12 @@ class DatabaseHelper {
       limit: limit,
     );
     return result.map((json) => Document.fromMap(json)).toList();
+  }
+
+  Future<int> updateDocument(Document doc) async {
+    final db = await instance.database;
+    final map = doc.toMap()..remove('id');
+    return await db.update('documents', map, where: 'id = ?', whereArgs: [doc.id]);
   }
 
   Future<int> deleteDocument(int id) async {
@@ -198,14 +222,27 @@ class DatabaseHelper {
 
   Future<int> setTaskDone(int id, bool done) async {
     final db = await instance.database;
-    return await db.update('tasks', {'isDone': done ? 1 : 0},
-        where: 'id = ?', whereArgs: [id]);
+    return await db.update(
+      'tasks',
+      {
+        'isDone': done ? 1 : 0,
+        'completedDate': done ? DateTime.now().toIso8601String() : null,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> setTaskDeadline(int id, DateTime? deadline) async {
     final db = await instance.database;
     return await db.update('tasks', {'deadline': deadline?.toIso8601String()},
         where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> updateTask(TaskItem task) async {
+    final db = await instance.database;
+    final map = task.toMap()..remove('id');
+    return await db.update('tasks', map, where: 'id = ?', whereArgs: [task.id]);
   }
 
   Future<int> deleteTask(int id) async {
@@ -215,7 +252,7 @@ class DatabaseHelper {
 
   Future<int> deleteCompletedTasks() async {
     final db = await instance.database;
-    return await db.delete('tasks', where: 'isDone = 1');
+    return await db.delete('tasks', where: 'isDone = 1 AND isDaily = 0');
   }
 
   Future close() async {
