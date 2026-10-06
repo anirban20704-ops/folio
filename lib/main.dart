@@ -11,9 +11,11 @@ import 'repositories/document_repository.dart';
 import 'services/scanner_service.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'core/folio_theme.dart';
+import 'services/notification_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.init();
   runApp(const FolioApp());
 }
 

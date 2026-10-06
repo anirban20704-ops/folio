@@ -24,6 +24,9 @@ class DatabaseHelper {
     return await openDatabase(
       path,
       version: 5,
+      // SQLite ignores FOREIGN KEY ... ON DELETE CASCADE unless this is on,
+      // which left orphaned documents/pages behind after deletes.
+      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -31,20 +34,25 @@ class DatabaseHelper {
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await _createTasksTable(db); // already includes deadline/isDaily/completedDate
-      return;
+      // Fresh tasks table already has every task column (incl. notifyEnabled).
+      await _createTasksTable(db);
+    } else {
+      if (oldVersion < 3) {
+        await db.execute('ALTER TABLE tasks ADD COLUMN deadline TEXT');
+      }
+      if (oldVersion < 4) {
+        await db.execute(
+            'ALTER TABLE tasks ADD COLUMN isDaily INTEGER NOT NULL DEFAULT 0');
+        await db.execute('ALTER TABLE tasks ADD COLUMN completedDate TEXT');
+      }
+      if (oldVersion < 5) {
+        await db.execute(
+            'ALTER TABLE tasks ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');
+      }
     }
-    if (oldVersion < 3) {
-      await db.execute('ALTER TABLE tasks ADD COLUMN deadline TEXT');
-    }
-    if (oldVersion < 4) {
-      await db.execute(
-          'ALTER TABLE tasks ADD COLUMN isDaily INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE tasks ADD COLUMN completedDate TEXT');
-    }
+    // Documents always need these, including when upgrading from v1
+    // (the old early `return` skipped this and would crash on first read).
     if (oldVersion < 5) {
-      await db.execute(
-          'ALTER TABLE tasks ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');
       await db.execute('ALTER TABLE documents ADD COLUMN deadline TEXT');
       await db.execute(
           'ALTER TABLE documents ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');

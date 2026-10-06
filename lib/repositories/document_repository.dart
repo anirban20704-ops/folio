@@ -79,7 +79,15 @@ class DocumentRepository {
     return result;
   }
 
-  Future<int> deleteFolder(int id) => _dbHelper.deleteFolder(id);
+  Future<int> deleteFolder(int id) async {
+    // Deleting a folder cascades to its documents, so cancel their reminders.
+    final docs = await _dbHelper.getDocumentsByFolder(id);
+    final result = await _dbHelper.deleteFolder(id);
+    for (final d in docs) {
+      if (d.id != null) await _notifications.cancelForDocument(d.id!);
+    }
+    return result;
+  }
 
   Future<int> updatePage(PageModel page) => _dbHelper.updatePage(page);
 

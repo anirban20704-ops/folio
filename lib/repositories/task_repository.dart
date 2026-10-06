@@ -88,6 +88,7 @@ class TaskRepository {
       title: description,
       at: deadline,
       enabled: effectiveNotify,
+      daily: isDaily,
     );
     return id;
   }
@@ -135,13 +136,38 @@ class TaskRepository {
       title: description,
       at: deadline,
       enabled: effectiveNotify,
+      daily: isDaily,
     );
   }
 
-  Future<int> setDone(int id, bool done) => _db.setTaskDone(id, done);
+  Future<int> setDone(int id, bool done) async {
+    final result = await _db.setTaskDone(id, done);
+    await _resyncReminder(id);
+    return result;
+  }
 
-  Future<int> setDeadline(int id, DateTime? deadline) =>
-      _db.setTaskDeadline(id, deadline);
+  Future<int> setDeadline(int id, DateTime? deadline) async {
+    final result = await _db.setTaskDeadline(id, deadline);
+    await _resyncReminder(id);
+    return result;
+  }
+
+  /// Re-reads a task and makes its OS reminder match: a finished one-off
+  /// task stops reminding (and starts again if un-ticked while still in the
+  /// future); daily tasks keep their repeating reminder either way.
+  Future<void> _resyncReminder(int id) async {
+    final matches = (await _db.getAllTasks()).where((t) => t.id == id);
+    if (matches.isEmpty) return;
+    final t = matches.first;
+    final finishedOneOff = t.isDone && !t.isDaily;
+    await _notifications.scheduleForTask(
+      id: id,
+      title: t.description,
+      at: t.deadline,
+      enabled: t.notifyEnabled && !finishedOneOff,
+      daily: t.isDaily,
+    );
+  }
 
   Future<void> deleteTask(int id) async {
     final tasks = await _db.getAllTasks();
