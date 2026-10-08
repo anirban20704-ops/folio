@@ -11,7 +11,7 @@ import '../../models/task_model.dart';
 import '../../services/scanner_service.dart';
 import '../../services/voice_note_service.dart';
 import 'deadline_notify_field.dart';
-import 'neu_widgets.dart';
+import 'clay_widgets.dart';
 
 class AddTaskSheet extends StatefulWidget {
   /// Pass an existing task to edit it in place; omit to create a new one.
@@ -24,6 +24,7 @@ class AddTaskSheet extends StatefulWidget {
 
 class _AddTaskSheetState extends State<AddTaskSheet> {
   final _controller = TextEditingController();
+  final _detailsController = TextEditingController();
   final _voice = VoiceNoteService();
   final List<String> _images = [];
   bool _listening = false;
@@ -41,6 +42,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     final existing = widget.existing;
     if (existing != null) {
       _controller.text = existing.description;
+      _detailsController.text = existing.details;
       _images.addAll(existing.imagePaths);
       _deadline = existing.deadline;
       _deadlineEditedManually = true; // don't let auto-detect override an edit
@@ -79,6 +81,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     _voice.stop();
     _controller.removeListener(_detectDeadline);
     _controller.dispose();
+    _detailsController.dispose();
     super.dispose();
   }
 
@@ -138,6 +141,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     final text = _controller.text.trim();
     if (text.isEmpty && _images.isEmpty) return;
     final description = text.isEmpty ? 'Photo task' : text;
+    final details = _detailsController.text.trim();
 
     final bloc = context.read<TaskBloc>();
     if (_isEditing) {
@@ -148,6 +152,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         deadline: _deadline,
         isDaily: _isDaily,
         notifyEnabled: _notifyEnabled,
+        details: details,
       ));
     } else {
       bloc.add(AddTask(
@@ -156,6 +161,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         deadline: _deadline,
         isDaily: _isDaily,
         notifyEnabled: _notifyEnabled,
+        details: details,
       ));
     }
     HapticFeedback.lightImpact();
@@ -165,13 +171,27 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<FolioThemeNotifier>();
+    final media = MediaQuery.of(context);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      // Cap the height to what's left above the keyboard so the form scrolls
+      // instead of overflowing (the yellow/black hatched bar).
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: media.size.height - media.viewInsets.bottom - media.padding.top - 8,
+        ),
+        child: Container(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         decoration: BoxDecoration(
-          color: theme.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: theme.cardBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: theme.darkShadow.withValues(alpha: theme.isDark ? 0.6 : 0.3),
+              blurRadius: 30,
+              offset: const Offset(0, -8),
+            ),
+          ],
         ),
         child: SafeArea(
           top: false,
@@ -190,22 +210,22 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(_isEditing ? 'Edit task' : 'New task',
-                  style: GoogleFonts.nunito(
-                      color: theme.text,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900)),
+              AccentTitle(
+                  text: _isEditing ? 'Edit task' : 'New task',
+                  accent: 'k',
+                  size: 26),
               const SizedBox(height: 16),
-              Container(
-                decoration: BoxDecoration(
-                  color: theme.bg,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: theme.insetShadow,
-                ),
-                child: TextField(
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+              ClayInset(borderRadius: 16, child: TextField(
                   controller: _controller,
-                  minLines: 2,
-                  maxLines: 5,
+                  minLines: 1,
+                  maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   style: TextStyle(
                       color: theme.text,
@@ -214,7 +234,27 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   decoration: InputDecoration(
                     hintText: _listening
                         ? 'Listening...'
-                        : 'Type, or tap the mic and speak',
+                        : 'Task title — type, or tap the mic',
+                    hintStyle: TextStyle(color: theme.textSub),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ClayInset(
+                borderRadius: 16,
+                child: TextField(
+                  controller: _detailsController,
+                  minLines: 2,
+                  maxLines: 5,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: TextStyle(
+                      color: theme.text,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Description (optional) — shown when you tap the task',
                     hintStyle: TextStyle(color: theme.textSub),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(16),
@@ -287,22 +327,26 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 timeOnlyMode: _isDaily,
                 onChanged: _onDeadlineFieldChanged,
               ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  NeuIconButton(
+                  ClayIconButton(
                       icon: Icons.photo_camera_outlined,
                       onTap: _pickCamera,
                       size: 46,
                       tooltip: 'Camera'),
                   const SizedBox(width: 12),
-                  NeuIconButton(
+                  ClayIconButton(
                       icon: Icons.photo_library_outlined,
                       onTap: _pickGallery,
                       size: 46,
                       tooltip: 'Gallery'),
                   const SizedBox(width: 12),
-                  NeuIconButton(
+                  ClayIconButton(
                       icon: _listening
                           ? Icons.stop_rounded
                           : Icons.mic_none_rounded,
@@ -311,7 +355,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                       size: 46,
                       tooltip: 'Voice note'),
                   const Spacer(),
-                  NeuButton(
+                  ClayButton(
                     filled: true,
                     borderRadius: 16,
                     padding: const EdgeInsets.symmetric(
@@ -327,6 +371,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

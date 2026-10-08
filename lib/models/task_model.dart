@@ -12,6 +12,10 @@ class TaskItem extends Equatable {
   final DateTime? completedDate;
   final bool notifyEnabled;
 
+  /// Longer free-text description. Hidden on the card, shown when the
+  /// task is tapped. [description] is the visible title.
+  final String details;
+
   const TaskItem({
     this.id,
     required this.description,
@@ -22,6 +26,7 @@ class TaskItem extends Equatable {
     this.isDaily = false,
     this.completedDate,
     this.notifyEnabled = false,
+    this.details = '',
   });
 
   TaskItem copyWith({
@@ -36,6 +41,7 @@ class TaskItem extends Equatable {
     DateTime? completedDate,
     bool clearCompletedDate = false,
     bool? notifyEnabled,
+    String? details,
   }) {
     return TaskItem(
       id: id ?? this.id,
@@ -48,6 +54,7 @@ class TaskItem extends Equatable {
       completedDate:
           clearCompletedDate ? null : (completedDate ?? this.completedDate),
       notifyEnabled: notifyEnabled ?? this.notifyEnabled,
+      details: details ?? this.details,
     );
   }
 
@@ -61,6 +68,7 @@ class TaskItem extends Equatable {
         'isDaily': isDaily ? 1 : 0,
         'completedDate': completedDate?.toIso8601String(),
         'notifyEnabled': notifyEnabled ? 1 : 0,
+        'details': details,
       };
 
   factory TaskItem.fromMap(Map<String, dynamic> map) {
@@ -81,6 +89,7 @@ class TaskItem extends Equatable {
           ? null
           : DateTime.parse(map['completedDate'] as String),
       notifyEnabled: (map['notifyEnabled'] as int? ?? 0) == 1,
+      details: (map['details'] as String?) ?? '',
     );
   }
 
@@ -98,5 +107,6 @@ class TaskItem extends Equatable {
         isDaily,
         completedDate,
         notifyEnabled,
+        details,
       ];
 }

@@ -15,11 +15,15 @@ class AddTask extends TaskEvent {
   final DateTime? deadline;
   final bool isDaily;
   final bool notifyEnabled;
+  final String details;
   const AddTask(this.description, this.imagePaths,
-      {this.deadline, this.isDaily = false, this.notifyEnabled = false});
+      {this.deadline,
+      this.isDaily = false,
+      this.notifyEnabled = false,
+      this.details = ''});
   @override
   List<Object?> get props =>
-      [description, imagePaths, deadline, isDaily, notifyEnabled];
+      [description, imagePaths, deadline, isDaily, notifyEnabled, details];
 }
 
 class UpdateTask extends TaskEvent {
@@ -29,6 +33,7 @@ class UpdateTask extends TaskEvent {
   final DateTime? deadline;
   final bool isDaily;
   final bool notifyEnabled;
+  final String details;
   const UpdateTask({
     required this.original,
     required this.description,
@@ -36,6 +41,7 @@ class UpdateTask extends TaskEvent {
     this.deadline,
     required this.isDaily,
     this.notifyEnabled = false,
+    this.details = '',
   });
   @override
   List<Object?> get props => [
@@ -45,6 +51,7 @@ class UpdateTask extends TaskEvent {
         deadline,
         isDaily,
         notifyEnabled,
+        details,
       ];
 }
 

@@ -11,10 +11,12 @@ import '../../repositories/document_repository.dart';
 import '../../services/pdf_service.dart';
 import '../../services/scanner_service.dart';
 import '../../core/folio_theme.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
 import '../widgets/deadline_notify_field.dart';
 import 'studio_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/dashboard/dashboard_bloc.dart';
+import '../../blocs/dashboard/dashboard_event.dart';
 
 
 class DocumentDetailScreen extends StatefulWidget {
@@ -46,7 +48,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
           notifyEnabled: notify,
         ));
     await widget.repository.updateDeadline(
-      widget.document,
+      _doc,
       deadline: deadline,
       notifyEnabled: notify,
     );
@@ -56,6 +58,24 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
   void initState() {
     super.initState();
     _loadPages();
+  }
+
+  // ─── Rename ───────────────────────────────────────────────────────────────
+  Future<void> _renameDocument() async {
+    final newName = await showClayTextPrompt(
+      context,
+      title: 'Rename document',
+      label: 'Document name',
+      icon: Icons.edit_rounded,
+      initialText: _doc.name,
+    );
+    if (!mounted) return;
+    if (newName == null || newName.isEmpty || newName == _doc.name) return;
+    final updated = await widget.repository.renameDocument(_doc, newName);
+    if (!mounted) return;
+    setState(() => _doc = updated);
+    context.read<DashboardBloc>().add(LoadDashboard());
+    HapticFeedback.lightImpact();
   }
 
   Future<void> _loadPages() async {
@@ -147,7 +167,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     ),
                     const Spacer(),
                     // Copy button
-                    NeuButton(
+                    ClayButton(
                       borderRadius: 12,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       onTap: () {
@@ -174,7 +194,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 child: SingleChildScrollView(
                   controller: controller,
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                  child: NeuBox(
+                  child: ClayBox(
                     pressed: true,
                     borderRadius: 16,
                     padding: const EdgeInsets.all(16),
@@ -202,7 +222,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
     setState(() => _isSharing = true);
     try {
       final images = _pages!.map((p) => File(p.imagePath)).toList();
-      final pdfFile = await _pdfService.generatePdf(images, widget.document.name);
+      final pdfFile = await _pdfService.generatePdf(images, _doc.name);
       if (!mounted) return;
       await Share.shareXFiles([XFile(pdfFile.path)], text: 'Document from Folio');
     } catch (e) {
@@ -226,24 +246,35 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               child: Row(
                 children: [
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Navigator.pop(context),
                     size: 44,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      widget.document.name,
-                      style: GoogleFonts.nunito(
-                        color: theme.text,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                    child: GestureDetector(
+                      onTap: _renameDocument,
+                      behavior: HitTestBehavior.opaque,
+                      child: Text(
+                        _doc.name,
+                        style: GoogleFonts.nunito(
+                          color: theme.text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  ClayIconButton(
+                    icon: Icons.edit_rounded,
+                    onTap: _renameDocument,
+                    size: 44,
+                    tooltip: 'Rename',
                   ),
                 ],
               ),
@@ -264,7 +295,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
               child: Row(
                 children: [
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: _isReorderMode ? Icons.grid_view_rounded : Icons.reorder_rounded,
                     onTap: () => setState(() => _isReorderMode = !_isReorderMode),
                     active: _isReorderMode,
@@ -272,19 +303,19 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     size: 44,
                   ),
                   const SizedBox(width: 10),
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: Icons.share_outlined,
                     onTap: _exportAndShare,
                     size: 44,
                     tooltip: 'Share PDF',
                   ),
                   const SizedBox(width: 10),
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: Icons.picture_as_pdf_outlined,
                     onTap: () async {
                       if (_pages == null) return;
                       final images = _pages!.map((p) => File(p.imagePath)).toList();
-                      final pdfFile = await _pdfService.generatePdf(images, widget.document.name);
+                      final pdfFile = await _pdfService.generatePdf(images, _doc.name);
                       await OpenFilex.open(pdfFile.path);
                     },
                     size: 44,
@@ -304,7 +335,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                       ),
                     ),
                   )
-                      : NeuIconButton(
+                      : ClayIconButton(
                     icon: Icons.text_fields_rounded,
                     onTap: _extractText,
                     size: 44,
@@ -312,7 +343,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                   ),
                   const Spacer(),
                   // Add pages button
-                  NeuButton(
+                  ClayButton(
                     filled: true,
                     borderRadius: 14,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -366,13 +397,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         final page = _pages![index];
         return Hero(
           tag: 'page_${page.id}',
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.bg,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: theme.raisedShadow,
-            ),
-            child: Stack(
+          child: ClayBox(borderRadius: 20, padding: EdgeInsets.zero, depth: ClayDepth.md, child: Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
@@ -457,13 +482,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
         return Padding(
           key: ValueKey(page.id),
           padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.bg,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: theme.subtleShadow,
-            ),
-            child: ListTile(
+          child: ClayBox(borderRadius: 18, padding: EdgeInsets.zero, depth: ClayDepth.sm, child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -490,7 +509,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
-          color: theme.bg,
+          color: theme.cardBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
@@ -512,7 +531,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: NeuButton(
+                      child: ClayButton(
                         borderRadius: 18,
                         padding: const EdgeInsets.all(20),
                         onTap: () => Navigator.pop(ctx, 'camera'),
@@ -527,7 +546,7 @@ class _DocumentDetailScreenState extends State<DocumentDetailScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: NeuButton(
+                      child: ClayButton(
                         borderRadius: 18,
                         padding: const EdgeInsets.all(20),
                         onTap: () => Navigator.pop(ctx, 'gallery'),

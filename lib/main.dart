@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
@@ -9,14 +10,16 @@ import 'blocs/tasks/task_event.dart';
 import 'repositories/task_repository.dart';
 import 'repositories/document_repository.dart';
 import 'services/scanner_service.dart';
-import 'ui/screens/dashboard_screen.dart';
+import 'ui/screens/splash_screen.dart';
 import 'core/folio_theme.dart';
 import 'services/notification_service.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.init();
+  // Show the animated loading screen straight away; notification setup
+  // (timezone lookup etc.) used to run first and kept the screen black.
   runApp(const FolioApp());
+  unawaited(NotificationService.instance.init());
 }
 
 class FolioApp extends StatelessWidget {
@@ -57,7 +60,7 @@ class FolioApp extends StatelessWidget {
             title: 'Folio',
             debugShowCheckedModeBanner: false,
             theme: theme.themeData,          // auto-switches day ↔ night
-            home: const DashboardScreen(),
+            home: const SplashScreen(),
           ),
         ),
       ),

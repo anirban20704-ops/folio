@@ -14,7 +14,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           () => repository.addTask(e.description, e.imagePaths,
               deadline: e.deadline,
               isDaily: e.isDaily,
-              notifyEnabled: e.notifyEnabled));
+              notifyEnabled: e.notifyEnabled,
+              details: e.details));
     });
     on<UpdateTask>((e, emit) async {
       await _run(
@@ -26,6 +27,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
                 deadline: e.deadline,
                 isDaily: e.isDaily,
                 notifyEnabled: e.notifyEnabled,
+                details: e.details,
               ));
     });
     on<ToggleTask>((e, emit) async {

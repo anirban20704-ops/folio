@@ -6,7 +6,7 @@ import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
 import 'package:intl/intl.dart';
 import 'add_task_sheet.dart';
-import 'neu_widgets.dart';
+import 'clay_widgets.dart';
 
 class TaskCard extends StatefulWidget {
   final TaskItem task;
@@ -44,6 +44,134 @@ class _TaskCardState extends State<TaskCard> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddTaskSheet(existing: widget.task),
+    );
+  }
+
+  void _showDetails(BuildContext context) {
+    final theme = context.read<FolioThemeNotifier>();
+    final task = widget.task;
+    final hasDetails = task.details.trim().isNotEmpty;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        child: ClayBox(
+          borderRadius: 32,
+          depth: ClayDepth.lg,
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      task.isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 18,
+                      color: task.isDone ? theme.accent : theme.textSub,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(task.isDone ? 'Done' : 'To do',
+                        style: GoogleFonts.nunito(
+                            color: theme.textSub,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(task.description,
+                    style: GoogleFonts.nunito(
+                        color: theme.text,
+                        fontSize: 21,
+                        height: 1.25,
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(height: 14),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: hasDetails
+                        ? Text(task.details,
+                            style: GoogleFonts.nunito(
+                                color: theme.text,
+                                fontSize: 15,
+                                height: 1.5,
+                                fontWeight: FontWeight.w600))
+                        : Text('No description added.',
+                            style: GoogleFonts.nunito(
+                                color: theme.textSub,
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w600)),
+                  ),
+                ),
+                if (task.deadline != null) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Icon(Icons.event_rounded,
+                          size: 15,
+                          color: task.isOverdue
+                              ? Colors.redAccent
+                              : theme.accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        task.isDaily
+                            ? 'Every day, ${DateFormat('h:mm a').format(task.deadline!)}'
+                            : DateFormat('EEE, MMM d · h:mm a')
+                                .format(task.deadline!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: task.isOverdue
+                              ? Colors.redAccent
+                              : theme.accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ClayButton(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 10),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openEdit(context);
+                      },
+                      child: Text('Edit',
+                          style: GoogleFonts.nunito(
+                              color: theme.text,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14)),
+                    ),
+                    const SizedBox(width: 10),
+                    ClayButton(
+                      filled: true,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      onTap: () => Navigator.pop(ctx),
+                      child: Text('Close',
+                          style: GoogleFonts.nunito(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -96,8 +224,9 @@ class _TaskCardState extends State<TaskCard> {
         child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 26),
       ),
       child: GestureDetector(
+        onTap: () => _showDetails(context),
         onDoubleTap: () => _openEdit(context),
-        child: NeuBox(
+        child: ClayBox(
         borderRadius: 20,
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -146,7 +275,7 @@ class _TaskCardState extends State<TaskCard> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: _done ? theme.accent : theme.bg,
+                      color: _done ? theme.accent : theme.cardBg,
                       borderRadius: BorderRadius.circular(9),
                       border: _done
                           ? null
@@ -270,7 +399,7 @@ class _TaskCardState extends State<TaskCard> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: theme.bg,
+        backgroundColor: theme.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text('Delete Task?',
             style: TextStyle(color: theme.text, fontWeight: FontWeight.w900)),

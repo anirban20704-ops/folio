@@ -4,6 +4,8 @@ import '../models/document_model.dart';
 import '../models/page_model.dart';
 import '../services/notification_service.dart';
 
+enum RenameFolderResult { renamed, nameTaken, empty, notFound }
+
 class DocumentRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final NotificationService _notifications = NotificationService.instance;
@@ -68,6 +70,22 @@ class DocumentRepository {
     );
   }
 
+  /// Renames a document. Returns the updated document. If it has a reminder
+  /// the notification is re-scheduled so its title shows the new name.
+  Future<Document> renameDocument(Document original, String newName) async {
+    final updated = original.copyWith(name: newName);
+    await _dbHelper.updateDocument(updated);
+    if (updated.deadline != null && updated.notifyEnabled) {
+      await _notifications.scheduleForDocument(
+        id: updated.id!,
+        title: newName,
+        at: updated.deadline,
+        enabled: true,
+      );
+    }
+    return updated;
+  }
+
   Future<int> addPage(PageModel page) => _dbHelper.insertPage(page);
 
   Future<List<PageModel>> getPages(int documentId) =>
@@ -77,6 +95,20 @@ class DocumentRepository {
     final result = await _dbHelper.deleteDocument(id);
     await _notifications.cancelForDocument(id);
     return result;
+  }
+
+  /// Renames a folder. Names are trimmed and must be unique (ignoring case).
+  Future<RenameFolderResult> renameFolder(int id, String newName) async {
+    final name = newName.trim();
+    if (name.isEmpty) return RenameFolderResult.empty;
+    final folders = await _dbHelper.getAllFolders();
+    final taken = folders.any(
+        (f) => f.id != id && f.name.toLowerCase() == name.toLowerCase());
+    if (taken) return RenameFolderResult.nameTaken;
+    final changed = await _dbHelper.renameFolder(id, name);
+    return changed > 0
+        ? RenameFolderResult.renamed
+        : RenameFolderResult.notFound;
   }
 
   Future<int> deleteFolder(int id) async {

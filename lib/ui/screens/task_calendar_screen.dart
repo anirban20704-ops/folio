@@ -6,7 +6,7 @@ import '../../blocs/tasks/task_bloc.dart';
 import '../../blocs/tasks/task_state.dart';
 import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
 
 /// A lightweight month-grid calendar for tasks with a deadline.
 /// Only reachable via the calendar icon on the Task Manager screen -
@@ -54,7 +54,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                   child: Row(
                     children: [
-                      NeuIconButton(
+                      ClayIconButton(
                         icon: Icons.arrow_back_rounded,
                         size: 42,
                         onTap: () => Navigator.pop(context),
@@ -73,7 +73,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: NeuBox(
+                  child: ClayBox(
                     borderRadius: 22,
                     padding: const EdgeInsets.all(14),
                     child: Column(
@@ -201,7 +201,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final t = selectedTasks[i];
-                            return NeuBox(
+                            return ClayBox(
                               borderRadius: 16,
                               padding: const EdgeInsets.all(14),
                               child: Row(

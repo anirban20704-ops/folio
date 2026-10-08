@@ -9,7 +9,8 @@ import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
 import '../../core/folio_theme.dart';
 import '../widgets/document_list_tile.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
+import '../widgets/folder_actions.dart';
 import 'document_detail_screen.dart';
 
 class DocumentsByFolderScreen extends StatefulWidget {
@@ -22,6 +23,14 @@ class DocumentsByFolderScreen extends StatefulWidget {
 }
 
 class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
+  late Folder _folder;
+
+  @override
+  void initState() {
+    super.initState();
+    _folder = widget.folder;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<FolioThemeNotifier>();
@@ -37,7 +46,7 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               child: Row(
                 children: [
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Navigator.pop(context),
                     size: 44,
@@ -56,7 +65,7 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
                           ),
                         ),
                         Text(
-                          widget.folder.name,
+                          _folder.name,
                           style: GoogleFonts.nunito(
                             color: theme.text,
                             fontSize: 22,
@@ -69,14 +78,16 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: theme.accentSoft,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(Icons.folder_rounded, color: theme.accent, size: 24),
+                  ClayIconButton(
+                    icon: Icons.edit_rounded,
+                    size: 44,
+                    tooltip: 'Rename folder',
+                    onTap: () async {
+                      final updated = await promptRenameFolder(context, _folder);
+                      if (updated != null && mounted) {
+                        setState(() => _folder = updated);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -85,14 +96,14 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
             // ─── Document List ──────────────────────────────────────────────
             Expanded(
               child: FutureBuilder<List<Document>>(
-                future: repository.getDocumentsInFolder(widget.folder.id!),
+                future: repository.getDocumentsInFolder(_folder.id!),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(
-                      child: NeuBox(
+                      child: ClayBox(
                         margin: const EdgeInsets.symmetric(horizontal: 32),
                         borderRadius: 24,
                         padding: const EdgeInsets.all(32),
@@ -139,11 +150,13 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
                           doc: doc,
                           onTap: () => Navigator.push(
                             context,
-                            _neuRoute(DocumentDetailScreen(
+                            _clayRoute(DocumentDetailScreen(
                               document: doc,
                               repository: repository,
                             )),
-                          ),
+                          ).then((_) {
+                            if (mounted) setState(() {});
+                          }),
                           onDelete: () {
                             context.read<DashboardBloc>().add(DeleteDocument(doc.id!));
                             setState(() {});
@@ -162,7 +175,7 @@ class _DocumentsByFolderScreenState extends State<DocumentsByFolderScreen> {
   }
 }
 
-PageRoute _neuRoute(Widget page) {
+PageRoute _clayRoute(Widget page) {
   return PageRouteBuilder(
     pageBuilder: (_, __, ___) => page,
     transitionsBuilder: (_, anim, __, child) => FadeTransition(

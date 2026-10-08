@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../models/document_model.dart';
 import '../../core/folio_theme.dart';
+import 'clay_widgets.dart';
 
 class DocumentListTile extends StatelessWidget {
   final Document doc;
@@ -37,13 +38,7 @@ class DocumentListTile extends StatelessWidget {
       onDismissed: (_) => onDelete(),
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.bg,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: theme.raisedShadow,
-          ),
-          child: Padding(
+        child: ClayBox(borderRadius: 20, padding: EdgeInsets.zero, depth: ClayDepth.md, child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
@@ -127,7 +122,7 @@ class DocumentListTile extends StatelessWidget {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: theme.bg,
+        backgroundColor: theme.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text('Delete Document?', style: TextStyle(color: theme.text, fontWeight: FontWeight.w900)),
         content: Text(

@@ -11,7 +11,7 @@ import '../../core/folio_theme.dart';
 import '../../models/task_model.dart';
 import 'task_calendar_screen.dart';
 import '../widgets/add_task_sheet.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
 import '../widgets/task_card.dart';
 
 class TaskManagerScreen extends StatefulWidget {
@@ -123,23 +123,22 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                         padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                         child: Row(
                           children: [
-                            NeuIconButton(
+                            ClayIconButton(
                               icon: Icons.arrow_back_rounded,
                               size: 44,
                               onTap: () => Navigator.pop(context),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 14),
                             Expanded(
-                              child: Text('Tasks',
-                                  style: GoogleFonts.nunito(
-                                      color: theme.text,
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -1)),
+                              child: const Align(
+                                alignment: Alignment.centerLeft,
+                                child: TasksTitle(size: 32),
+                              ),
                             ),
-                            NeuIconButton(
+                            ClayIconButton(
                               icon: Icons.calendar_month_rounded,
                               size: 44,
+                              tooltip: 'Calendar',
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -147,26 +146,16 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            NeuButton(
+                            ClayIconButton(
+                              icon: Icons.add_rounded,
                               filled: true,
-                              borderRadius: 20,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 12),
+                              size: 44,
+                              tooltip: 'New task',
                               onTap: _openAdd,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.add_rounded,
-                                      color: Colors.white, size: 18),
-                                  const SizedBox(width: 6),
-                                  Text('New',
-                                      style: GoogleFonts.nunito(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14)),
-                                ],
-                              ),
                             ),
+                            const SizedBox(width: 10),
+                            // Same spot as on the dashboard
+                            const ClayThemeToggle(),
                           ],
                         ),
                       ),
@@ -220,7 +209,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: NeuBox(
+                        child: ClayBox(
                           borderRadius: 20,
                           padding: const EdgeInsets.all(32),
                           child: Column(
@@ -310,7 +299,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                                 ),
                               ),
                             ),
-                            NeuButton(
+                            ClayButton(
                               borderRadius: 14,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 8),
@@ -377,7 +366,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: theme.bg,
+        backgroundColor: theme.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text('Clear completed?',
             style: TextStyle(color: theme.text, fontWeight: FontWeight.w900)),
@@ -391,7 +380,7 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                 style: TextStyle(
                     color: theme.textSub, fontWeight: FontWeight.w700)),
           ),
-          NeuButton(
+          ClayButton(
             filled: true,
             borderRadius: 12,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

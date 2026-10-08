@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       // SQLite ignores FOREIGN KEY ... ON DELETE CASCADE unless this is on,
       // which left orphaned documents/pages behind after deletes.
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -49,6 +49,10 @@ class DatabaseHelper {
         await db.execute(
             'ALTER TABLE tasks ADD COLUMN notifyEnabled INTEGER NOT NULL DEFAULT 0');
       }
+      if (oldVersion < 6) {
+        await db.execute(
+            "ALTER TABLE tasks ADD COLUMN details TEXT NOT NULL DEFAULT ''");
+      }
     }
     // Documents always need these, including when upgrading from v1
     // (the old early `return` skipped this and would crash on first read).
@@ -70,7 +74,8 @@ class DatabaseHelper {
         deadline TEXT,
         isDaily INTEGER NOT NULL DEFAULT 0,
         completedDate TEXT,
-        notifyEnabled INTEGER NOT NULL DEFAULT 0
+        notifyEnabled INTEGER NOT NULL DEFAULT 0,
+        details TEXT NOT NULL DEFAULT ''
       )
     ''');
   }
@@ -165,6 +170,16 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.delete(
       'documents',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> renameFolder(int id, String name) async {
+    final db = await instance.database;
+    return await db.update(
+      'folders',
+      {'name': name},
       where: 'id = ?',
       whereArgs: [id],
     );

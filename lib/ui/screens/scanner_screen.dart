@@ -8,7 +8,7 @@ import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
 import '../../blocs/dashboard/dashboard_state.dart';
 import '../../core/folio_theme.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
 import '../widgets/deadline_notify_field.dart';
 import 'studio_screen.dart';
 import 'dart:io';
@@ -62,7 +62,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                   child: Row(
                     children: [
-                      NeuIconButton(
+                      ClayIconButton(
                         icon: Icons.arrow_back_ios_new_rounded,
                         onTap: () => Navigator.pop(context),
                         size: 44,
@@ -80,14 +80,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         ),
                       ),
                       if (hasPicked) ...[
-                        NeuIconButton(
+                        ClayIconButton(
                           icon: _isReorderMode ? Icons.grid_view_rounded : Icons.reorder_rounded,
                           onTap: () => setState(() => _isReorderMode = !_isReorderMode),
                           active: _isReorderMode,
                           size: 44,
                         ),
                         const SizedBox(width: 10),
-                        NeuButton(
+                        ClayButton(
                           filled: true,
                           borderRadius: 14,
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -110,7 +110,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 if (hasPicked) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    child: NeuTextField(
+                    child: ClayTextField(
                       controller: _nameController,
                       label: 'Document Name',
                       prefixIcon: Icons.edit_note_rounded,
@@ -161,7 +161,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          NeuBox(
+          ClayBox(
             borderRadius: 28,
             padding: const EdgeInsets.all(32),
             margin: const EdgeInsets.symmetric(horizontal: 48),
@@ -193,7 +193,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       child: Row(
         children: [
           Expanded(
-            child: NeuButton(
+            child: ClayButton(
               borderRadius: 18,
               padding: const EdgeInsets.symmetric(vertical: 16),
               onTap: () => context.read<ScannerBloc>().add(PickImages()),
@@ -209,7 +209,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: NeuButton(
+            child: ClayButton(
               filled: true,
               borderRadius: 18,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -238,7 +238,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       builder: (ctx) => Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
         decoration: BoxDecoration(
-          color: theme.bg,
+          color: theme.cardBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
@@ -267,7 +267,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (ctx, index) {
                         final folder = state.folders[index];
-                        return NeuButton(
+                        return ClayButton(
                           borderRadius: 16,
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           onTap: () {
@@ -331,13 +331,7 @@ class _ImageGrid extends StatelessWidget {
             context.read<ScannerBloc>().add(UpdateImage(index, edited));
           }
         },
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.bg,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: theme.raisedShadow,
-          ),
-          child: Stack(
+        child: ClayBox(borderRadius: 20, padding: EdgeInsets.zero, depth: ClayDepth.md, child: Stack(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
@@ -389,13 +383,7 @@ class _ReorderList extends StatelessWidget {
       itemBuilder: (context, index) => Padding(
         key: ValueKey(images[index].path),
         padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.bg,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: theme.subtleShadow,
-          ),
-          child: ListTile(
+        child: ClayBox(borderRadius: 18, padding: EdgeInsets.zero, depth: ClayDepth.sm, child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(10),

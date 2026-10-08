@@ -11,7 +11,8 @@ import '../../blocs/tasks/task_state.dart';
 import '../../repositories/document_repository.dart';
 import '../widgets/document_list_tile.dart';
 import '../widgets/folder_list_tile.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/folder_actions.dart';
+import '../widgets/clay_widgets.dart';
 import '../../core/folio_theme.dart';
 import 'scanner_screen.dart';
 import 'task_manager_screen.dart';
@@ -76,49 +77,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                'Folio',
-                                style: GoogleFonts.nunito(
-                                  color: theme.text,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1.5,
-                                ),
-                              ),
+                              const FolioWordmark(size: 36),
                             ],
                           ),
                         ),
-                        // Theme toggle
-                        _ThemeToggleButton(),
-                        const SizedBox(width: 10),
-                        // Scan FAB (top-right shortcut)
-                        NeuButton(
-                          filled: true,
-                          borderRadius: 20,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                          onTap: () {
-                            context.read<ScannerBloc>().add(ResetScanner());
-                            Navigator.push(
-                              context,
-                              _neuRoute(const ScannerScreen()),
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.document_scanner_rounded, color: Colors.white, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Scan',
-                                style: GoogleFonts.nunito(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Theme toggle (same spot on every screen)
+                        const ClayThemeToggle(),
                       ],
                     ),
                   ),
@@ -158,7 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Text(state.message, style: TextStyle(color: theme.text, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        NeuButton(
+        ClayButton(
           onTap: () => context.read<DashboardBloc>().add(LoadDashboard()),
           child: Text('Retry', style: TextStyle(color: context.watch<FolioThemeNotifier>().accent, fontWeight: FontWeight.w800)),
         ),
@@ -207,7 +171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
             const Spacer(),
             if (onAdd != null)
-              NeuIconButton(
+              ClayIconButton(
                 icon: Icons.create_new_folder_outlined,
                 onTap: onAdd,
                 size: 40,
@@ -225,7 +189,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: NeuBox(
+          child: ClayBox(
             borderRadius: 16,
             padding: const EdgeInsets.all(20),
             child: Row(
@@ -255,7 +219,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final folder = state.folders[index];
             return FolderListTile(
               folder: folder,
-              onTap: () => Navigator.push(context, _neuRoute(DocumentsByFolderScreen(folder: folder))),
+              onTap: () => Navigator.push(context, _clayRoute(DocumentsByFolderScreen(folder: folder))),
+              onRename: () => promptRenameFolder(context, folder),
               onDelete: () => context.read<DashboardBloc>().add(DeleteFolder(folder.id!)),
             );
           },
@@ -270,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: NeuBox(
+          child: ClayBox(
             borderRadius: 20,
             padding: const EdgeInsets.all(32),
             child: Column(
@@ -307,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               doc: doc,
               onTap: () => Navigator.push(
                 context,
-                _neuRoute(DocumentDetailScreen(
+                _clayRoute(DocumentDetailScreen(
                   document: doc,
                   repository: context.read<DocumentRepository>(),
                 )),
@@ -320,44 +285,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showAddFolderDialog(BuildContext context) {
-    final controller = TextEditingController();
-    final theme = context.read<FolioThemeNotifier>();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: theme.bg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          'New Folder',
-          style: TextStyle(color: theme.text, fontWeight: FontWeight.w900),
-        ),
-        content: NeuTextField(
-          controller: controller,
-          label: 'Folder Name',
-          prefixIcon: Icons.folder_outlined,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: theme.textSub, fontWeight: FontWeight.w700)),
-          ),
-          NeuButton(
-            filled: true,
-            borderRadius: 12,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            onTap: () {
-              if (controller.text.isNotEmpty) {
-                context.read<DashboardBloc>().add(AddFolder(controller.text));
-                Navigator.pop(ctx);
-              }
-            },
-            child: Text('Create', style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
+  Future<void> _showAddFolderDialog(BuildContext context) async {
+    final name = await showClayTextPrompt(
+      context,
+      title: 'New Folder',
+      label: 'Folder Name',
+      icon: Icons.folder_outlined,
+      confirmLabel: 'Create',
     );
+    if (name == null || !context.mounted) return;
+    context.read<DashboardBloc>().add(AddFolder(name));
   }
 }
 
@@ -377,41 +314,51 @@ class _TasksBar extends StatelessWidget {
           child: BlocBuilder<TaskBloc, TaskState>(
             builder: (context, state) {
               final pending = state is TaskLoaded ? state.active.length : 0;
-              return SizedBox(
-                width: double.infinity,
-                child: NeuButton(
-                  borderRadius: 20,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  onTap: () => Navigator.push(
-                      context, _neuRoute(const TaskManagerScreen())),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.checklist_rounded, color: theme.accent),
-                      const SizedBox(width: 8),
-                      Text('Tasks',
-                          style: GoogleFonts.nunito(
-                              color: theme.text,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      if (pending > 0) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: theme.accentSoft,
-                              borderRadius: BorderRadius.circular(20)),
-                          child: Text('$pending',
-                              style: TextStyle(
-                                  color: theme.accent,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12)),
-                        ),
-                      ],
-                    ],
+              return Row(
+                children: [
+                  Expanded(
+                    child: ClayButton(
+                      borderRadius: 22,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      onTap: () => Navigator.push(
+                          context, _clayRoute(const TaskManagerScreen())),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.checklist_rounded, color: theme.accent),
+                          const SizedBox(width: 8),
+                          const TasksTitle(size: 20),
+                          if (pending > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: theme.accentSoft,
+                                  borderRadius: BorderRadius.circular(20)),
+                              child: Text('$pending',
+                                  style: TextStyle(
+                                      color: theme.accent,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12)),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  ClayIconButton(
+                    icon: Icons.document_scanner_rounded,
+                    filled: true,
+                    size: 58,
+                    tooltip: 'Scan',
+                    onTap: () {
+                      context.read<ScannerBloc>().add(ResetScanner());
+                      Navigator.push(context, _clayRoute(const ScannerScreen()));
+                    },
+                  ),
+                ],
               );
             },
           ),
@@ -421,34 +368,8 @@ class _TasksBar extends StatelessWidget {
   }
 }
 
-// ─── Theme Toggle ─────────────────────────────────────────────────────────────
-class _ThemeToggleButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final theme = context.watch<FolioThemeNotifier>();
-    return GestureDetector(
-      onLongPress: () {
-        // Long press = reset to auto
-        theme.setAuto();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Theme set to Auto (time-based)')),
-        );
-      },
-      child: NeuIconButton(
-        icon: theme.isDark
-            ? Icons.nightlight_round
-            : Icons.wb_sunny_rounded,
-        active: !theme.isAuto,
-        tooltip: theme.isAuto ? 'Auto (long-press to reset)' : 'Manual override',
-        onTap: () => theme.isDark ? theme.setDark(false) : theme.setDark(true),
-        size: 44,
-      ),
-    );
-  }
-}
-
 // ─── Page Route Helper ────────────────────────────────────────────────────────
-PageRoute _neuRoute(Widget page) {
+PageRoute _clayRoute(Widget page) {
   return PageRouteBuilder(
     pageBuilder: (_, __, ___) => page,
     transitionsBuilder: (_, anim, __, child) {

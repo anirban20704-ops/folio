@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
 import '../../core/color_filters.dart';
 import '../../core/folio_theme.dart';
-import '../widgets/neu_widgets.dart';
+import '../widgets/clay_widgets.dart';
 import 'package:image_cropper/image_cropper.dart';
 
 class StudioScreen extends StatefulWidget {
@@ -100,7 +100,7 @@ class _StudioScreenState extends State<StudioScreen> {
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               child: Row(
                 children: [
-                  NeuIconButton(
+                  ClayIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Navigator.pop(context),
                     size: 44,
@@ -128,7 +128,7 @@ class _StudioScreenState extends State<StudioScreen> {
                       ),
                     ),
                   )
-                      : NeuButton(
+                      : ClayButton(
                     filled: true,
                     borderRadius: 14,
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -152,7 +152,7 @@ class _StudioScreenState extends State<StudioScreen> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: NeuBox(
+                child: ClayBox(
                   pressed: true,
                   borderRadius: 24,
                   padding: EdgeInsets.zero,
@@ -226,7 +226,7 @@ class _StudioScreenState extends State<StudioScreen> {
               duration: const Duration(milliseconds: 200),
               width: 72,
               decoration: BoxDecoration(
-                color: theme.bg,
+                color: theme.cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: isSelected ? theme.pressedShadow : theme.subtleShadow,
                 border: isSelected
@@ -276,7 +276,7 @@ class _StudioScreenState extends State<StudioScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: NeuBox(
+      child: ClayBox(
         borderRadius: 24,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
@@ -298,7 +298,7 @@ class _StudioScreenState extends State<StudioScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: item.active ? theme.accentSoft : theme.bg,
+              color: item.active ? theme.accentSoft : theme.cardBg,
               shape: BoxShape.circle,
               boxShadow: item.active ? theme.pressedShadow : theme.subtleShadow,
             ),

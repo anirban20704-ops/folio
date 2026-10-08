@@ -63,6 +63,7 @@ class TaskRepository {
     DateTime? deadline,
     bool isDaily = false,
     bool notifyEnabled = false,
+    String details = '',
   }) async {
     final saved = <String>[];
     if (sourceImagePaths.isNotEmpty) {
@@ -82,6 +83,7 @@ class TaskRepository {
       deadline: deadline,
       isDaily: isDaily,
       notifyEnabled: effectiveNotify,
+      details: details,
     ));
     await _notifications.scheduleForTask(
       id: id,
@@ -105,6 +107,7 @@ class TaskRepository {
     DateTime? deadline,
     required bool isDaily,
     required bool notifyEnabled,
+    String details = '',
   }) async {
     final dir = await _imagesDir();
     final saved = <String>[];
@@ -130,6 +133,7 @@ class TaskRepository {
       clearDeadline: deadline == null,
       isDaily: isDaily,
       notifyEnabled: effectiveNotify,
+      details: details,
     ));
     await _notifications.scheduleForTask(
       id: original.id!,

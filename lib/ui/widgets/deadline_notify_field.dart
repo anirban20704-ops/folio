@@ -100,7 +100,7 @@ class _DeadlineNotifyFieldState extends State<DeadlineNotifyField> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: _deadline == null ? theme.bg : theme.accentSoft,
+              color: _deadline == null ? theme.cardBg : theme.accentSoft,
               borderRadius: BorderRadius.circular(10),
               boxShadow: _deadline == null ? theme.subtleShadow : null,
               border: _deadline == null
@@ -160,17 +160,6 @@ class _DeadlineNotifyFieldState extends State<DeadlineNotifyField> {
             ),
           ],
         ),
-        if (_notify)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              'Reminders aren\'t wired up on this device yet - the toggle is ready for when they are.',
-              style: TextStyle(
-                  color: theme.textSub.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
       ],
     );
   }
