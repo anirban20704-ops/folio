@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/folio_theme.dart';
 
@@ -395,6 +396,7 @@ class ClayTextField extends StatelessWidget {
   final bool autofocus;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
+  final int? maxLength;
 
   const ClayTextField({
     super.key,
@@ -404,6 +406,7 @@ class ClayTextField extends StatelessWidget {
     this.autofocus = false,
     this.onSubmitted,
     this.onChanged,
+    this.maxLength,
   });
 
   @override
@@ -416,6 +419,8 @@ class ClayTextField extends StatelessWidget {
         autofocus: autofocus,
         onSubmitted: onSubmitted,
         onChanged: onChanged,
+        maxLength: maxLength,
+        maxLengthEnforcement: MaxLengthEnforcement.enforced,
         textInputAction: TextInputAction.done,
         style: TextStyle(
           color: theme.text,
@@ -424,6 +429,7 @@ class ClayTextField extends StatelessWidget {
         ),
         decoration: InputDecoration(
           labelText: label,
+          counterStyle: TextStyle(color: theme.textSub, fontSize: 11),
           labelStyle:
               TextStyle(color: theme.textSub, fontWeight: FontWeight.w600),
           prefixIcon: prefixIcon != null
@@ -592,6 +598,7 @@ Future<String?> showClayTextPrompt(
   String initialText = '',
   String confirmLabel = 'Save',
   String? Function(String text)? validator,
+  int? maxLength,
 }) {
   return showDialog<String>(
     context: context,
@@ -602,6 +609,7 @@ Future<String?> showClayTextPrompt(
       initialText: initialText,
       confirmLabel: confirmLabel,
       validator: validator,
+      maxLength: maxLength,
     ),
   );
 }
@@ -613,6 +621,7 @@ class _ClayPromptDialog extends StatefulWidget {
   final String initialText;
   final String confirmLabel;
   final String? Function(String text)? validator;
+  final int? maxLength;
 
   const _ClayPromptDialog({
     required this.title,
@@ -621,6 +630,7 @@ class _ClayPromptDialog extends StatefulWidget {
     required this.initialText,
     required this.confirmLabel,
     required this.validator,
+    required this.maxLength,
   });
 
   @override
@@ -673,6 +683,7 @@ class _ClayPromptDialogState extends State<_ClayPromptDialog> {
             label: widget.label,
             prefixIcon: widget.icon,
             autofocus: true,
+            maxLength: widget.maxLength,
             onSubmitted: (_) => _submit(),
             onChanged: (_) {
               if (_error != null) setState(() => _error = null);
@@ -709,3 +720,8 @@ class _ClayPromptDialogState extends State<_ClayPromptDialog> {
     );
   }
 }
+
+/// Width/height of a dashboard folder tile; grows with the user's font size
+/// (up to the app-wide cap) so the text never overflows the tile.
+double folderTileSize(BuildContext context) =>
+    120 * MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.4).toDouble();

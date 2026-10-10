@@ -19,7 +19,10 @@ void main() {
   // Show the animated loading screen straight away; notification setup
   // (timezone lookup etc.) used to run first and kept the screen black.
   runApp(const FolioApp());
-  unawaited(NotificationService.instance.init());
+  // Notification set-up is heavy; do it well after the first frames.
+  // (It also initialises on demand the first time a reminder is scheduled.)
+  unawaited(Future.delayed(
+      const Duration(seconds: 6), NotificationService.instance.init));
 }
 
 class FolioApp extends StatelessWidget {
@@ -60,6 +63,18 @@ class FolioApp extends StatelessWidget {
             title: 'Folio',
             debugShowCheckedModeBanner: false,
             theme: theme.themeData,          // auto-switches day ↔ night
+            // Respect the user's font size, but cap it so layouts stay usable
+            // (without a cap, "largest" fonts overflow every screen).
+            builder: (context, child) {
+              final mq = MediaQuery.of(context);
+              return MediaQuery(
+                data: mq.copyWith(
+                  textScaler: mq.textScaler
+                      .clamp(minScaleFactor: 0.9, maxScaleFactor: 1.35),
+                ),
+                child: child!,
+              );
+            },
             home: const SplashScreen(),
           ),
         ),

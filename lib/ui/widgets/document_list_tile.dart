@@ -69,7 +69,10 @@ class DocumentListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 3),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             DateFormat.yMMMd().format(doc.createdAt),
@@ -79,8 +82,10 @@ class DocumentListTile extends StatelessWidget {
                               fontSize: 12,
                             ),
                           ),
-                          if (doc.deadline != null) ...[
-                            const SizedBox(width: 8),
+                          if (doc.deadline != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                             Icon(Icons.event_rounded,
                                 size: 12,
                                 color: doc.notifyEnabled
@@ -102,7 +107,8 @@ class DocumentListTile extends StatelessWidget {
                               Icon(Icons.notifications_rounded,
                                   size: 11, color: theme.accent),
                             ],
-                          ],
+                              ],
+                            ),
                         ],
                       ),
                     ],

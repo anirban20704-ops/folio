@@ -7,6 +7,7 @@ import '../../models/task_model.dart';
 import 'package:intl/intl.dart';
 import 'add_task_sheet.dart';
 import 'clay_widgets.dart';
+import 'image_viewer.dart';
 
 class TaskCard extends StatefulWidget {
   final TaskItem task;
@@ -175,16 +176,9 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
-  void _openImage(BuildContext context, String path) {
-    showDialog(
-      context: context,
-      builder: (_) => GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: InteractiveViewer(
-          child: Center(child: Image.file(File(path))),
-        ),
-      ),
-    );
+  void _openImage(BuildContext context, int index) {
+    showImageViewer(context,
+        paths: widget.task.imagePaths, initialIndex: index);
   }
 
   @override
@@ -241,7 +235,7 @@ class _TaskCardState extends State<TaskCard> {
                   itemCount: task.imagePaths.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => _openImage(context, task.imagePaths[i]),
+                    onTap: () => _openImage(context, i),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(

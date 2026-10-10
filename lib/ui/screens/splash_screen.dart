@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +26,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  static const _introMs = 2800;
+  static const _introMs = 2400;
 
   late final AnimationController _intro = AnimationController(
     vsync: this,
@@ -39,15 +41,43 @@ class _SplashScreenState extends State<SplashScreen>
 
   bool _navigated = false;
 
+  // Jank-proof clock for the intro. A normal AnimationController follows the
+  // wall clock, so if the first frames are slow (debug builds, cold start) the
+  // animation "jumps" to its end and the splash is barely seen. This one
+  // advances at most ~2 frames' worth per tick, so every stage is shown.
+  Ticker? _ticker;
+  Duration _lastTick = Duration.zero;
+  double _elapsedMs = 0;
+  final Completer<void> _introDone = Completer<void>();
+
+  void _startIntro() {
+    _ticker = createTicker((elapsed) {
+      final dt = (elapsed - _lastTick).inMilliseconds;
+      _lastTick = elapsed;
+      _elapsedMs += (dt < 0 ? 0 : (dt > 34 ? 34 : dt)).toDouble();
+      final v = _elapsedMs / _introMs;
+      _intro.value = v > 1.0 ? 1.0 : v;
+      if (v >= 1.0 && !_introDone.isCompleted) {
+        _ticker?.stop();
+        _introDone.complete();
+      }
+    })..start();
+  }
+
   @override
   void initState() {
     super.initState();
-    _run();
+    // Start only once the first frame is on screen, so the animation is
+    // always seen from its beginning.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _run();
+    });
   }
 
   Future<void> _run() async {
     final bloc = context.read<DashboardBloc>();
-    final introDone = _intro.forward().orCancel.catchError((_) {});
+    _startIntro();
+    final introDone = _introDone.future;
     final dataReady = _waitForData(bloc);
     await Future.wait([introDone, dataReady]);
     if (!mounted || _navigated) return;
@@ -84,6 +114,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _ticker?.dispose();
     _intro.dispose();
     _loop.dispose();
     super.dispose();
@@ -109,7 +140,16 @@ class _SplashScreenState extends State<SplashScreen>
             children: [
               ..._blobs(theme),
               Center(
-                child: Column(
+                // Brand screen: ignore the system font size and shrink to fit,
+                // so it never overflows in landscape or on small phones.
+                child: MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: TextScaler.noScaling),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: 340,
+                      child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _pageStack(theme),
@@ -131,6 +171,9 @@ class _SplashScreenState extends State<SplashScreen>
                     const SizedBox(height: 40),
                     _progress(theme),
                   ],
+                ),
+                    ),
+                  ),
                 ),
               ),
             ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,8 @@ import '../../blocs/dashboard/dashboard_state.dart';
 import '../../core/folio_theme.dart';
 import '../widgets/clay_widgets.dart';
 import '../widgets/deadline_notify_field.dart';
+import '../widgets/image_viewer.dart';
+import '../../core/limits.dart';
 import 'studio_screen.dart';
 import 'dart:io';
 
@@ -38,7 +41,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
     return BlocConsumer<ScannerBloc, ScannerState>(
       listener: (context, state) {
-        if (state is ScannerImagesPicked) _nameController.text = state.suggestedName;
+        if (state is ScannerImagesPicked) {
+          _nameController.text =
+              clampName(state.suggestedName, kMaxDocNameLength);
+        }
         if (state is ScannerSaved) {
           context.read<DashboardBloc>().add(LoadDashboard());
           Navigator.pop(context);
@@ -57,6 +63,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
           body: SafeArea(
             child: Column(
               children: [
+                Expanded(
+                  child: NestedScrollView(
+                    headerSliverBuilder: (ctx, _) => [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
                 // ─── Header ──────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -71,6 +83,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       Expanded(
                         child: Text(
                           _isReorderMode ? 'Reorder Pages' : 'New Scan',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.nunito(
                             color: theme.text,
                             fontSize: 22,
@@ -114,6 +128,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       controller: _nameController,
                       label: 'Document Name',
                       prefixIcon: Icons.edit_note_rounded,
+                      maxLength: kMaxDocNameLength,
                     ),
                   ),
                   Padding(
@@ -130,10 +145,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 ],
 
                 const SizedBox(height: 16),
-
-                // ─── Body ─────────────────────────────────────────────────
-                Expanded(
-                  child: _buildBody(context, state, theme),
+                          ],
+                        ),
+                      ),
+                    ],
+                    body: _buildBody(context, state, theme),
+                  ),
                 ),
 
                 // ─── Bottom Action Buttons ────────────────────────────────
@@ -307,61 +324,177 @@ class _ScannerScreenState extends State<ScannerScreen> {
 }
 
 // ─── Grid ─────────────────────────────────────────────────────────────────────
-class _ImageGrid extends StatelessWidget {
+/// Big thumbnails. Tap = view full size (swipe between pages), pencil = edit,
+/// X = remove, long-press then drag onto another page = reorder.
+class _ImageGrid extends StatefulWidget {
   final List<File> images;
   final FolioThemeNotifier theme;
   const _ImageGrid({required this.images, required this.theme});
 
   @override
+  State<_ImageGrid> createState() => _ImageGridState();
+}
+
+class _ImageGridState extends State<_ImageGrid> {
+  Timer? _scrollTimer;
+  double _dragY = 0;
+
+  @override
+  void dispose() {
+    _scrollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _scrollTimer?.cancel();
+    _scrollTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
+      final c = PrimaryScrollController.maybeOf(context);
+      if (c == null || !c.hasClients) return;
+      final mq = MediaQuery.of(context);
+      const edge = 110.0;
+      double delta = 0;
+      if (_dragY < mq.padding.top + edge) {
+        delta = -14;
+      } else if (_dragY > mq.size.height - edge) {
+        delta = 14;
+      }
+      if (delta == 0) return;
+      c.jumpTo((c.offset + delta)
+          .clamp(c.position.minScrollExtent, c.position.maxScrollExtent)
+          .toDouble());
+    });
+  }
+
+  Widget _card(BuildContext context, int index) {
+    final images = widget.images;
+    return GestureDetector(
+      onTap: () => showImageViewer(
+        context,
+        paths: images.map((f) => f.path).toList(),
+        initialIndex: index,
+        labels: List.generate(images.length, (i) => 'Page ${i + 1}'),
+      ),
+      child: ClayBox(
+        borderRadius: 20,
+        padding: EdgeInsets.zero,
+        depth: ClayDepth.md,
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.file(images[index],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  cacheWidth: 600),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Row(
+                children: [
+                  _miniButton(Icons.edit_outlined, () async {
+                    final edited = await Navigator.push<File>(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => StudioScreen(image: images[index])),
+                    );
+                    if (edited != null && context.mounted) {
+                      context
+                          .read<ScannerBloc>()
+                          .add(UpdateImage(index, edited));
+                    }
+                  }),
+                  const SizedBox(width: 6),
+                  _miniButton(Icons.close, () =>
+                      context.read<ScannerBloc>().add(RemoveImage(index))),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: 8,
+              left: 8,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Text('Page ${index + 1}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniButton(IconData icon, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 16, color: Colors.white),
+        ),
+      );
+
+  @override
   Widget build(BuildContext context) {
+    final images = widget.images;
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       physics: const BouncingScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: 0.8,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 0.8,
       ),
       itemCount: images.length,
-      itemBuilder: (context, index) => GestureDetector(
-        onTap: () async {
-          final edited = await Navigator.push<File>(
-            context,
-            MaterialPageRoute(builder: (_) => StudioScreen(image: images[index])),
-          );
-          if (edited != null && context.mounted) {
-            context.read<ScannerBloc>().add(UpdateImage(index, edited));
-          }
-        },
-        child: ClayBox(borderRadius: 20, padding: EdgeInsets.zero, depth: ClayDepth.md, child: Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.file(images[index], fit: BoxFit.cover, width: double.infinity, height: double.infinity),
-              ),
-              Positioned(
-                top: 8, right: 8,
-                child: GestureDetector(
-                  onTap: () => context.read<ScannerBloc>().add(RemoveImage(index)),
-                  child: Container(
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
+      itemBuilder: (context, index) => LayoutBuilder(
+        key: ValueKey(images[index].path),
+        builder: (context, box) {
+          final card = _card(context, index);
+          return DragTarget<int>(
+            onWillAcceptWithDetails: (d) => d.data != index,
+            onAcceptWithDetails: (d) => context
+                .read<ScannerBloc>()
+                .add(ReorderImages(d.data, index)),
+            builder: (context, candidates, _) => AnimatedScale(
+              scale: candidates.isNotEmpty ? 0.93 : 1,
+              duration: const Duration(milliseconds: 120),
+              child: LongPressDraggable<int>(
+                data: index,
+                delay: const Duration(milliseconds: 350),
+                hapticFeedbackOnStart: true,
+                onDragStarted: _startAutoScroll,
+                onDragUpdate: (d) => _dragY = d.globalPosition.dy,
+                onDragEnd: (_) => _scrollTimer?.cancel(),
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                    width: box.maxWidth,
+                    height: box.maxHeight,
+                    child: Opacity(
+                      opacity: 0.92,
+                      child: Transform.scale(scale: 1.05, child: card),
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
                   ),
                 ),
+                childWhenDragging: Opacity(opacity: 0.25, child: card),
+                child: card,
               ),
-              Positioned(
-                bottom: 8, left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(10)),
-                  child: Text('Page ${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -379,17 +512,32 @@ class _ReorderList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       physics: const BouncingScrollPhysics(),
       itemCount: images.length,
-      onReorderItem: (o, n) => context.read<ScannerBloc>().add(ReorderImages(o, n)),
+      onReorderItem: (o, n) =>
+          context.read<ScannerBloc>().add(ReorderImages(o, n)),
       itemBuilder: (context, index) => Padding(
         key: ValueKey(images[index].path),
         padding: const EdgeInsets.only(bottom: 12),
-        child: ClayBox(borderRadius: 18, padding: EdgeInsets.zero, depth: ClayDepth.sm, child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: ClayBox(
+          borderRadius: 18,
+          padding: EdgeInsets.zero,
+          depth: ClayDepth.sm,
+          child: ListTile(
+            onTap: () => showImageViewer(
+              context,
+              paths: images.map((f) => f.path).toList(),
+              initialIndex: index,
+              labels: List.generate(images.length, (i) => 'Page ${i + 1}'),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.file(images[index], width: 52, height: 52, fit: BoxFit.cover),
+              child: Image.file(images[index],
+                  width: 52, height: 52, fit: BoxFit.cover, cacheWidth: 200),
             ),
-            title: Text('Page ${index + 1}', style: GoogleFonts.nunito(color: theme.text, fontWeight: FontWeight.w800)),
+            title: Text('Page ${index + 1}',
+                style: GoogleFonts.nunito(
+                    color: theme.text, fontWeight: FontWeight.w800)),
             trailing: Icon(Icons.drag_handle_rounded, color: theme.textSub),
           ),
         ),

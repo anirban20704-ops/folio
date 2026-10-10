@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,12 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../blocs/tasks/task_bloc.dart';
 import '../../blocs/tasks/task_event.dart';
 import '../../core/folio_theme.dart';
-import '../../services/date_parser.dart';
 import '../../models/task_model.dart';
 import '../../services/scanner_service.dart';
 import '../../services/voice_note_service.dart';
 import 'deadline_notify_field.dart';
 import 'clay_widgets.dart';
+import 'image_viewer.dart';
 
 class AddTaskSheet extends StatefulWidget {
   /// Pass an existing task to edit it in place; omit to create a new one.
@@ -30,7 +31,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   bool _listening = false;
   String _baseText = '';
   DateTime? _deadline;
-  bool _deadlineEditedManually = false;
+  Timer? _micWatch;
   bool _isDaily = false;
   bool _notifyEnabled = false;
 
@@ -45,17 +46,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       _detailsController.text = existing.details;
       _images.addAll(existing.imagePaths);
       _deadline = existing.deadline;
-      _deadlineEditedManually = true; // don't let auto-detect override an edit
       _isDaily = existing.isDaily;
       _notifyEnabled = existing.notifyEnabled;
     }
-    _controller.addListener(_detectDeadline);
-  }
-
-  void _detectDeadline() {
-    if (_deadlineEditedManually || _isDaily) return;
-    final found = DateParser.extract(_controller.text);
-    if (found != _deadline) setState(() => _deadline = found);
   }
 
   void _toggleDaily(bool value) {
@@ -63,7 +56,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       _isDaily = value;
       if (value) {
         _deadline = null;
-        _deadlineEditedManually = true;
       }
     });
   }
@@ -72,14 +64,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     setState(() {
       _deadline = deadline;
       _notifyEnabled = notify;
-      _deadlineEditedManually = true;
     });
   }
 
   @override
   void dispose() {
+    _micWatch?.cancel();
     _voice.stop();
-    _controller.removeListener(_detectDeadline);
     _controller.dispose();
     _detailsController.dispose();
     super.dispose();
@@ -87,8 +78,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   Future<void> _toggleMic() async {
     if (_listening) {
+      _micWatch?.cancel();
       await _voice.stop();
-      setState(() => _listening = false);
+      if (mounted) setState(() => _listening = false);
       return;
     }
     final ok = await _voice.init(onStatus: (s) {
@@ -105,6 +97,22 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     }
     _baseText = _controller.text.trim();
     setState(() => _listening = true);
+    // The phone's recogniser switches itself off after silence / a time limit.
+    // Watch for that and flip the mic button back, instead of trusting a
+    // status callback that goes stale once the first sheet is closed.
+    final startedAt = DateTime.now();
+    _micWatch?.cancel();
+    _micWatch = Timer.periodic(const Duration(milliseconds: 500), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      final grace = DateTime.now().difference(startedAt).inMilliseconds < 2500;
+      if (_listening && !grace && !_voice.isListening) {
+        t.cancel();
+        setState(() => _listening = false);
+      }
+    });
     await _voice.start((words, isFinal) {
       if (!mounted) return;
       final joined = _baseText.isEmpty ? words : '$_baseText $words';
@@ -138,6 +146,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   }
 
   void _save() {
+    _micWatch?.cancel();
+    _voice.stop();
     final text = _controller.text.trim();
     if (text.isEmpty && _images.isEmpty) return;
     final description = text.isEmpty ? 'Photo task' : text;
@@ -172,6 +182,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   Widget build(BuildContext context) {
     final theme = context.watch<FolioThemeNotifier>();
     final media = MediaQuery.of(context);
+    // Short screens (landscape, or keyboard open): scroll the WHOLE sheet
+    // so the form never collapses to nothing.
+    final compact = media.size.height - media.viewInsets.bottom < 480;
     return Padding(
       padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
       // Cap the height to what's left above the keyboard so the form scrolls
@@ -195,7 +208,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
         ),
         child: SafeArea(
           top: false,
-          child: Column(
+          child: _outerWrap(compact, Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -215,10 +228,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   accent: 'k',
                   size: 26),
               const SizedBox(height: 16),
-              Flexible(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
+              _formWrap(compact, Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -272,13 +282,17 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     itemBuilder: (_, i) => Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(File(_images[i]),
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              cacheWidth: 180),
+                        GestureDetector(
+                          onTap: () => showImageViewer(context,
+                              paths: _images, initialIndex: i),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(File(_images[i]),
+                                width: 64,
+                                height: 64,
+                                fit: BoxFit.cover,
+                                cacheWidth: 180),
+                          ),
                         ),
                         Positioned(
                           top: -6,
@@ -328,9 +342,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 onChanged: _onDeadlineFieldChanged,
               ),
                     ],
-                  ),
-                ),
-              ),
+              )),
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -370,10 +382,21 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ],
               ),
             ],
-          ),
+          )),
         ),
         ),
       ),
     );
   }
+
+  Widget _outerWrap(bool compact, Widget child) => compact
+      ? SingleChildScrollView(
+          physics: const BouncingScrollPhysics(), child: child)
+      : child;
+
+  Widget _formWrap(bool compact, Widget child) => compact
+      ? child
+      : Flexible(
+          child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(), child: child));
 }

@@ -92,8 +92,8 @@ class ClayShadows {
 
   /// Inflated look: soft dark edge bottom-right, bright rim top-left.
   static List<ClayInner> inner(bool isDark, ClayDepth d) {
-    final dark = Colors.black;
-    final light = Colors.white;
+    const dark = Colors.black;
+    const light = Colors.white;
     switch (d) {
       case ClayDepth.sm:
         return [

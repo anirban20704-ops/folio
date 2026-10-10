@@ -129,8 +129,9 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                               onTap: () => Navigator.pop(context),
                             ),
                             const SizedBox(width: 14),
-                            Expanded(
-                              child: const Align(
+                            const Expanded(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: TasksTitle(size: 32),
                               ),
@@ -267,11 +268,15 @@ class _TaskManagerScreenState extends State<TaskManagerScreen> {
                                     () => _showCompleted = !_showCompleted),
                                 child: Row(
                                   children: [
-                                    Text('Completed',
-                                        style: GoogleFonts.nunito(
-                                            color: theme.text,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w900)),
+                                    Flexible(
+                                      child: Text('Completed',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.nunito(
+                                              color: theme.text,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w900)),
+                                    ),
                                     const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(

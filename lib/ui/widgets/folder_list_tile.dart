@@ -29,7 +29,7 @@ class FolderListTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       onLongPress: () => _showActions(context, theme, canDelete),
-      child: ClayBox(width: 120,
+      child: ClayBox(width: folderTileSize(context),
         borderRadius: 20, padding: EdgeInsets.zero, depth: ClayDepth.md, child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Column(

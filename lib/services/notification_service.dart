@@ -2,7 +2,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tzdata;
+// latest_10y is a much smaller database than latest_all, so it loads
+// quickly and doesn't stall the UI at start-up.
+import 'package:timezone/data/latest_10y.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 /// Schedules real OS notifications for task and document reminders.
@@ -37,8 +39,12 @@ class NotificationService {
   static int _taskNid(int id) => id * 2;
   static int _docNid(int id) => id * 2 + 1;
 
-  /// Call once from main() before runApp. Safe to call again.
-  Future<void> init() async {
+  Future<void>? _initFuture;
+
+  /// Safe to call any number of times; the work happens once.
+  Future<void> init() => _initFuture ??= _doInit();
+
+  Future<void> _doInit() async {
     if (_ready) return;
     try {
       const settings = InitializationSettings(
@@ -100,6 +106,7 @@ class NotificationService {
   // ─── internals ────────────────────────────────────────────────────────────
 
   Future<void> _cancel(int nid) async {
+    await init();
     if (!_ready) return;
     try {
       await _plugin.cancel(id: nid);
@@ -116,6 +123,7 @@ class NotificationService {
     required bool enabled,
     required bool daily,
   }) async {
+    await init();
     if (!_ready) return;
     try {
       await _plugin.cancel(id: nid); // always replace any previous reminder

@@ -160,6 +160,12 @@ class DatabaseHelper {
     return result.map((json) => Document.fromMap(json)).toList();
   }
 
+  Future<Document?> getDocumentById(int id) async {
+    final db = await instance.database;
+    final rows = await db.query('documents', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : Document.fromMap(rows.first);
+  }
+
   Future<int> updateDocument(Document doc) async {
     final db = await instance.database;
     final map = doc.toMap()..remove('id');

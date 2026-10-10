@@ -1,4 +1,5 @@
 import '../core/database_helper.dart';
+import '../core/limits.dart';
 import '../models/folder_model.dart';
 import '../models/document_model.dart';
 import '../models/page_model.dart';
@@ -13,7 +14,8 @@ class DocumentRepository {
   Future<List<Folder>> getFolders() => _dbHelper.getAllFolders();
 
   Future<int> createFolder(String name) {
-    final folder = Folder(name: name, createdAt: DateTime.now());
+    final folder = Folder(
+        name: clampName(name, kMaxFolderNameLength), createdAt: DateTime.now());
     return _dbHelper.insertFolder(folder);
   }
 
@@ -51,6 +53,8 @@ class DocumentRepository {
 
   /// Updates just a document's deadline/notification toggle, from the
   /// document detail screen (set it after the document already exists).
+  Future<Document?> getDocument(int id) => _dbHelper.getDocumentById(id);
+
   Future<void> updateDeadline(
     Document original, {
     DateTime? deadline,
@@ -73,7 +77,8 @@ class DocumentRepository {
   /// Renames a document. Returns the updated document. If it has a reminder
   /// the notification is re-scheduled so its title shows the new name.
   Future<Document> renameDocument(Document original, String newName) async {
-    final updated = original.copyWith(name: newName);
+    final updated =
+        original.copyWith(name: clampName(newName, kMaxDocNameLength));
     await _dbHelper.updateDocument(updated);
     if (updated.deadline != null && updated.notifyEnabled) {
       await _notifications.scheduleForDocument(
@@ -99,7 +104,7 @@ class DocumentRepository {
 
   /// Renames a folder. Names are trimmed and must be unique (ignoring case).
   Future<RenameFolderResult> renameFolder(int id, String newName) async {
-    final name = newName.trim();
+    final name = clampName(newName, kMaxFolderNameLength);
     if (name.isEmpty) return RenameFolderResult.empty;
     final folders = await _dbHelper.getAllFolders();
     final taken = folders.any(

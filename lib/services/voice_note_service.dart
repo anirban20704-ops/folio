@@ -29,6 +29,8 @@ class VoiceNoteService {
       listenOptions: SpeechListenOptions(
         partialResults: true,
         listenMode: ListenMode.dictation,
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 6),
       ),
     );
   }

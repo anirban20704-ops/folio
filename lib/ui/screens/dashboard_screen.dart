@@ -14,6 +14,7 @@ import '../widgets/folder_list_tile.dart';
 import '../widgets/folder_actions.dart';
 import '../widgets/clay_widgets.dart';
 import '../../core/folio_theme.dart';
+import '../../core/limits.dart';
 import 'scanner_screen.dart';
 import 'task_manager_screen.dart';
 import 'document_detail_screen.dart';
@@ -208,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: 120,
+        height: folderTileSize(context),
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -286,12 +287,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showAddFolderDialog(BuildContext context) async {
+    // Names already in use (case-insensitive) so a duplicate is caught
+    // right here, in the dialog, instead of silently creating a twin.
+    final state = context.read<DashboardBloc>().state;
+    final existing = state is DashboardLoaded
+        ? state.folders.map((f) => f.name.toLowerCase()).toSet()
+        : <String>{};
     final name = await showClayTextPrompt(
       context,
       title: 'New Folder',
       label: 'Folder Name',
       icon: Icons.folder_outlined,
       confirmLabel: 'Create',
+      maxLength: kMaxFolderNameLength,
+      validator: (t) => existing.contains(t.toLowerCase())
+          ? 'A folder named "$t" already exists'
+          : null,
     );
     if (name == null || !context.mounted) return;
     context.read<DashboardBloc>().add(AddFolder(name));
@@ -322,7 +333,10 @@ class _TasksBar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       onTap: () => Navigator.push(
                           context, _clayRoute(const TaskManagerScreen())),
-                      child: Row(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.checklist_rounded, color: theme.accent),
@@ -344,7 +358,7 @@ class _TasksBar extends StatelessWidget {
                             ),
                           ],
                         ],
-                      ),
+                      )),
                     ),
                   ),
                   const SizedBox(width: 16),

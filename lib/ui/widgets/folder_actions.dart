@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/dashboard/dashboard_bloc.dart';
 import '../../blocs/dashboard/dashboard_event.dart';
+import '../../core/limits.dart';
 import '../../models/folder_model.dart';
 import '../../repositories/document_repository.dart';
 import 'clay_widgets.dart';
@@ -30,7 +31,8 @@ Future<Folder?> promptRenameFolder(BuildContext context, Folder folder) async {
     title: 'Rename folder',
     label: 'Folder name',
     icon: Icons.folder_outlined,
-    initialText: folder.name,
+    initialText: clampName(folder.name, kMaxFolderNameLength),
+    maxLength: kMaxFolderNameLength,
     validator: (text) => others.contains(text.toLowerCase())
         ? 'A folder named "$text" already exists'
         : null,
